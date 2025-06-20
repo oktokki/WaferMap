@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wafer Map Dashboard v2.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #f1f5f9; }
+        .chart-container { position: relative; width: 100%; height: 300px; }
+        .wafer-map-container { position: relative; width: 100%; max-width: 250px; aspect-ratio: 1 / 1; margin: auto; }
+        .lot-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); }
+        .modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.5); z-index: 40; }
+        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 50; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <!-- Lot Selection Page -->
+    <div id="lot-selection-page">
+        <div class="container mx-auto p-8">
+            <div class="text-center mb-12">
+                <i class="fas fa-layer-group text-6xl text-blue-500 mb-4"></i>
+                <h1 class="text-4xl font-bold text-slate-900">Wafer Lot Selector</h1>
+                <p class="text-lg text-slate-600 mt-2">분석할 데이터가 포함된 폴더를 선택하세요.</p>
+                 <div class="mt-8 flex justify-center">
+                    <label for="zip-folder-input" class="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 cursor-pointer transition-colors duration-300">
+                        <i class="fas fa-folder-open mr-2"></i> Map 데이터 폴더 선택
+                    </label>
+                    <input type="file" id="zip-folder-input" webkitdirectory directory multiple class="hidden">
+                </div>
+            </div>
+           
+            <div id="lot-list-container" class="hidden">
+                <div class="relative mb-6">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="search-box" placeholder="제품명 또는 Lot ID로 검색..." class="w-full pl-12 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div id="lot-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <!-- Lot cards will be populated here -->
+                </div>
+                <div id="no-results" class="hidden text-center py-12 text-slate-500">
+                    <i class="fas fa-box-open text-4xl mb-4"></i>
+                    <h3 class="text-xl font-semibold">검색 결과가 없습니다.</h3>
+                </div>
+            </div>
+             <div id="loading-state" class="hidden text-center py-12">
+                <div class="loader mx-auto"></div>
+                <p class="mt-4 text-slate-600">데이터를 분석 중입니다... (<span id="progress-text"></span>)</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Page -->
+    <div id="dashboard-page" class="hidden">
+        <!-- Header -->
+        <header class="bg-white shadow-sm sticky top-0 z-30">
+            <div class="container mx-auto px-6 py-3 flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                     <button id="back-to-list-btn" class="flex items-center text-slate-600 hover:text-blue-600">
+                        <i class="fas fa-arrow-left mr-2"></i> 롯 리스트로 돌아가기
+                    </button>
+                    <div class="w-px h-6 bg-slate-200"></div>
+                    <div>
+                        <h1 id="lot-id-header" class="text-xl font-bold text-slate-900"></h1>
+                        <p class="text-sm text-slate-500">
+                           <span id="product-id-header"></span> / <span id="test-site-header"></span> / <span id="timestamp-header"></span>
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="spc-settings-btn" class="px-4 py-2 bg-slate-200 text-slate-700 font-semibold rounded-md hover:bg-slate-300 transition-colors">
+                        <i class="fas fa-sliders-h mr-2"></i>SPC 설정
+                    </button>
+                    <button id="generate-report-btn" class="px-4 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 transition-colors">
+                        <i class="fas fa-file-pdf mr-2"></i>리포트 생성
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <main id="report-container" class="container mx-auto p-6">
+            <!-- Lot Level Analysis -->
+            <section id="lot-level-analysis" class="mb-8">
+                <h2 class="text-2xl font-bold mb-4">Lot Level 분석</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-lg font-semibold mb-2">수율 관리도 (Yield Control Chart)</h3>
+                        <div class="chart-container">
+                            <canvas id="controlChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                         <h3 class="text-lg font-semibold mb-2">불량 패턴 파레토 (Defect Pattern Pareto)</h3>
+                        <div class="chart-container">
+                            <canvas id="paretoChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mt-6">
+                     <div class="bg-white p-4 rounded-lg shadow-md text-center">
+                        <h4 class="text-sm font-medium text-slate-500">평균 수율</h4>
+                        <p id="avg-yield" class="text-2xl font-bold text-green-600 mt-1"></p>
+                    </div>
+                     <div class="bg-white p-4 rounded-lg shadow-md text-center">
+                        <h4 class="text-sm font-medium text-slate-500">수율 표준편차</h4>
+                        <p id="std-dev" class="text-2xl font-bold text-slate-800 mt-1"></p>
+                    </div>
+                     <div class="bg-white p-4 rounded-lg shadow-md text-center">
+                        <h4 class="text-sm font-medium text-slate-500">공정 능력 (Cpk)</h4>
+                        <p id="cpk-value" class="text-2xl font-bold text-blue-600 mt-1"></p>
+                    </div>
+                     <div class="bg-white p-4 rounded-lg shadow-md text-center">
+                        <h4 class="text-sm font-medium text-slate-500">이상(Outlier) 웨이퍼</h4>
+                        <p id="outlier-count" class="text-2xl font-bold text-red-600 mt-1"></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Wafer Level Analysis -->
+            <section id="wafer-level-analysis">
+                 <h2 class="text-2xl font-bold mb-4">Wafer Level 분석</h2>
+                 <div class="bg-white p-6 rounded-lg shadow-md">
+                     <div class="flex justify-between items-center mb-4">
+                         <h3 class="text-lg font-semibold">웨이퍼 선택 및 비교</h3>
+                         <div class="flex items-center space-x-2">
+                             <span class="text-sm font-medium">정렬:</span>
+                             <button id="sort-by-slot" class="px-3 py-1 text-sm bg-slate-200 rounded-md">슬롯#</button>
+                             <button id="sort-by-yield" class="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md">수율</button>
+                         </div>
+                     </div>
+                    <div id="wafer-selection-list" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 max-h-48 overflow-y-auto p-2 border rounded-md">
+                        <!-- Wafer selection checkboxes will be here -->
+                    </div>
+                 </div>
+                 <div id="wafer-comparison-grid" class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <!-- Selected wafer maps will be displayed here -->
+                 </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- SPC Settings Modal -->
+    <div id="spc-modal" class="hidden modal-backdrop">
+        <div class="modal bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div class="p-6 border-b">
+                <h3 class="text-xl font-semibold">SPC 설정</h3>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label for="usl-input" class="block text-sm font-medium text-slate-700">수율 상한 규격 (USL %)</label>
+                    <input type="number" id="usl-input" value="100" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                 <div>
+                    <label for="lsl-input" class="block text-sm font-medium text-slate-700">수율 하한 규격 (LSL %)</label>
+                    <input type="number" id="lsl-input" value="85" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-slate-50 flex justify-end space-x-3">
+                <button id="cancel-spc-btn" class="px-4 py-2 bg-slate-200 rounded-md hover:bg-slate-300">취소</button>
+                <button id="save-spc-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">적용</button>
+            </div>
+        </div>
+    </div>
+<script>
+// Version 2.0
+// Last Updated: 2025-06-19
+// Implemented by Gemini
+document.addEventListener('DOMContentLoaded', () => {
+
+    // Page Elements
+    const landingPage = document.getElementById('lot-selection-page');
+    const dashboardPage = document.getElementById('dashboard-page');
+    const zipFolderInput = document.getElementById('zip-folder-input');
+    const loadingState = document.getElementById('loading-state');
+    const progressText = document.getElementById('progress-text');
+    
+    // Lot Selection Elements
+    const lotListContainer = document.getElementById('lot-list-container');
+    const lotGridEl = document.getElementById('lot-grid');
+    const searchBox = document.getElementById('search-box');
+    const noResultsEl = document.getElementById('no-results');
+
+    // Dashboard Elements
+    const backToListBtn = document.getElementById('back-to-list-btn');
+    const reportContainer = document.getElementById('report-container');
+    const waferSelectionListEl = document.getElementById('wafer-selection-list');
+    const waferComparisonGridEl = document.getElementById('wafer-comparison-grid');
+    const sortBySlotBtn = document.getElementById('sort-by-slot');
+    const sortByYieldBtn = document.getElementById('sort-by-yield');
+    const generateReportBtn = document.getElementById('generate-report-btn');
+
+    // SPC Modal Elements
+    const spcModal = document.getElementById('spc-modal');
+    const spcSettingsBtn = document.getElementById('spc-settings-btn');
+    const saveSpcBtn = document.getElementById('save-spc-btn');
+    const cancelSpcBtn = document.getElementById('cancel-spc-btn');
+    const uslInput = document.getElementById('usl-input');
+    const lslInput = document.getElementById('lsl-input');
+
+    // State & Cache
+    let lotDataCache = {};
+    let controlChart, paretoChart;
+    let selectedLotId = null;
+    let selectedWaferIds = new Set();
+    let currentSort = 'yield';
+    let spcSettings = { usl: 100, lsl: 85 };
+    
+    // --- Event Listeners ---
+    zipFolderInput.addEventListener('change', handleFolderSelect);
+    searchBox.addEventListener('input', renderLotList);
+    backToListBtn.addEventListener('click', showLotSelectionPage);
+    spcSettingsBtn.addEventListener('click', () => spcModal.classList.remove('hidden'));
+    cancelSpcBtn.addEventListener('click', () => spcModal.classList.add('hidden'));
+    saveSpcBtn.addEventListener('click', applySpcSettings);
+    sortBySlotBtn.addEventListener('click', () => setSortMode('slot'));
+    sortByYieldBtn.addEventListener('click', () => setSortMode('yield'));
+    generateReportBtn.addEventListener('click', createPdfReport);
+
+
+    // --- Core Logic ---
+    async function handleFolderSelect(event) {
+        const files = event.target.files;
+        if (files.length === 0) return;
+
+        loadingState.classList.remove('hidden');
+        lotListContainer.classList.add('hidden');
+        lotDataCache = {};
+        
+        const zipFiles = Array.from(files).filter(file => file.name.toLowerCase().endsWith('.zip'));
+        let processedCount = 0;
+        
+        for (const file of zipFiles) {
+            try {
+                const lotData = await parseZipFile(file);
+                if (lotData) {
+                    lotDataCache[lotData.lotId] = lotData;
+                }
+            } catch (error) {
+                console.error(`Error processing ${file.name}:`, error);
+            }
+            processedCount++;
+            progressText.textContent = `${processedCount} / ${zipFiles.length} 파일`;
+        }
+        
+        loadingState.classList.add('hidden');
+        lotListContainer.classList.remove('hidden');
+        renderLotList();
+    }
+    
+    // --- Parsing Functions ---
+    async function parseZipFile(file) {
+        const parts = file.name.replace('.zip', '').split('_');
+        if (parts.length < 4) return null;
+
+        const lotId = parts[1];
+        const lotData = {
+            fileName: file.name,
+            productId: parts[0],
+            lotId: lotId,
+            timestamp: parts[2],
+            testSite: parts[3],
+            wafers: []
+        };
+
+        const zip = await JSZip.loadAsync(file);
+        const waferFiles = Object.keys(zip.files).filter(name => /\.\d{2}$/.test(name.toUpperCase()));
+        
+        for (const wfName of waferFiles) {
+            const waferContent = await zip.files[wfName].async('text');
+            const waferInfo = parseWaferFile(waferContent);
+            lotData.wafers.push(waferInfo);
+        }
+        
+        lotData.wafers.sort((a,b) => a.slotNo - b.slotNo);
+        return lotData;
+    }
+
+    function parseWaferFile(content) {
+        const lines = content.split('\n');
+        const header = {};
+        const mapData = [];
+        let isMap = false;
+
+        lines.forEach(line => {
+            if (line.includes(':')) {
+                const [key, value] = line.split(':', 2);
+                header[key.trim()] = value.trim();
+            } else if (line.trim().startsWith('.') || (line.trim().length > 0 && !isMap)) {
+                 if (line.trim().length > 0) {
+                     isMap = true;
+                     mapData.push(line.trim());
+                 }
+            } else if(isMap && line.trim() !== ''){
+                 mapData.push(line.trim());
+            }
+        });
+
+        const totalDie = parseInt(header['Total test die'] || 0, 10);
+        const passDie = parseInt(header['Pass Die'] || 0, 10);
+        const yieldValue = totalDie > 0 ? (passDie / totalDie) * 100 : 0;
+
+        return {
+            slotNo: parseInt(header['Slot No'] || 0, 10),
+            waferId: header['Wafer ID'],
+            totalDie, passDie, 
+            failDie: parseInt(header['Fail Die'] || 0, 10),
+            yield: yieldValue,
+            map: mapData
+        };
+    }
+
+    // --- Page & UI Rendering ---
+    function showLotSelectionPage() {
+        dashboardPage.classList.add('hidden');
+        landingPage.classList.remove('hidden');
+    }
+
+    function renderLotList() {
+        lotGridEl.innerHTML = '';
+        const query = searchBox.value.toLowerCase();
+        const lotIds = Object.keys(lotDataCache).filter(id => id.toLowerCase().includes(query) || lotDataCache[id].productId.toLowerCase().includes(query));
+
+        noResultsEl.classList.toggle('hidden', lotIds.length > 0);
+
+        lotIds.forEach(lotId => {
+            const lot = lotDataCache[lotId];
+            const yields = lot.wafers.map(w => w.yield);
+            const avgYield = yields.length > 0 ? (yields.reduce((a, b) => a + b, 0) / yields.length) : 0;
+            
+            const card = document.createElement('div');
+            card.className = 'lot-card bg-white p-5 rounded-lg shadow-md cursor-pointer transition-all duration-300';
+            card.dataset.lotId = lotId;
+            card.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="font-bold text-lg text-blue-700">${lot.lotId}</h3>
+                        <p class="text-sm text-slate-500">${lot.productId}</p>
+                    </div>
+                    <span class="text-sm font-semibold px-2 py-1 rounded-md ${avgYield > 90 ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}">
+                        ${avgYield.toFixed(2)}%
+                    </span>
+                </div>
+                <div class="mt-4 text-xs text-slate-400">
+                    <span>${lot.wafers.length} wafers</span> &middot;
+                    <span>${lot.testSite}</span> &middot;
+                    <span>${lot.timestamp.substring(0,8)}</span>
+                </div>
+            `;
+            card.addEventListener('click', () => {
+                selectedLotId = lotId;
+                renderDashboard();
+            });
+            lotGridEl.appendChild(card);
+        });
+    }
+
+    function renderDashboard() {
+        if (!selectedLotId) return;
+        const lot = lotDataCache[selectedLotId];
+        
+        landingPage.classList.add('hidden');
+        dashboardPage.classList.remove('hidden');
+        
+        // Header
+        document.getElementById('lot-id-header').textContent = lot.lotId;
+        document.getElementById('product-id-header').textContent = lot.productId;
+        document.getElementById('test-site-header').textContent = lot.testSite;
+        document.getElementById('timestamp-header').textContent = lot.timestamp;
+
+        // Perform all analyses
+        performLotAnalysis();
+        renderWaferSelectionList();
+        
+        // Default view
+        selectedWaferIds.clear();
+        if (lot.wafers.length > 0) {
+            const outlierWafers = getOutlierWafers();
+            const defaultSelection = outlierWafers.length > 0 ? outlierWafers : [lot.wafers[0]];
+            defaultSelection.forEach(w => selectedWaferIds.add(w.waferId));
+        }
+        updateWaferSelectionUI();
+        renderComparisonGrid();
+    }
+    
+    function renderWaferSelectionList() {
+        if (!selectedLotId) return;
+        const lot = lotDataCache[selectedLotId];
+        const wafers = [...lot.wafers];
+
+        if (currentSort === 'yield') {
+            wafers.sort((a, b) => a.yield - b.yield);
+        } else { // 'slot'
+            wafers.sort((a, b) => a.slotNo - b.slotNo);
+        }
+
+        waferSelectionListEl.innerHTML = '';
+        wafers.forEach(wafer => {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <label class="flex items-center space-x-2 p-2 rounded-md hover:bg-slate-100 cursor-pointer">
+                    <input type="checkbox" data-wafer-id="${wafer.waferId}" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                    <span class="text-sm">${wafer.slotNo.toString().padStart(2, '0')}: ${wafer.yield.toFixed(1)}%</span>
+                </label>
+            `;
+            div.querySelector('input').addEventListener('change', (e) => {
+                if(e.target.checked) {
+                    selectedWaferIds.add(wafer.waferId);
+                } else {
+                    selectedWaferIds.delete(wafer.waferId);
+                }
+                renderComparisonGrid();
+            });
+            waferSelectionListEl.appendChild(div);
+        });
+        updateWaferSelectionUI();
+    }
+    
+    function updateWaferSelectionUI() {
+        waferSelectionListEl.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.checked = selectedWaferIds.has(cb.dataset.waferId);
+        });
+    }
+
+    function renderComparisonGrid() {
+        waferComparisonGridEl.innerHTML = '';
+        if (selectedWaferIds.size === 0) {
+            waferComparisonGridEl.innerHTML = `<div class="col-span-full text-center py-12 text-slate-500">
+                <i class="fas fa-check-square text-4xl mb-4"></i>
+                <h3 class="text-xl font-semibold">비교할 웨이퍼를 선택하세요.</h3>
+            </div>`;
+            return;
+        }
+
+        const lot = lotDataCache[selectedLotId];
+        selectedWaferIds.forEach(waferId => {
+            const wafer = lot.wafers.find(w => w.waferId === waferId);
+            const card = document.createElement('div');
+            card.className = 'bg-white p-4 rounded-lg shadow-md';
+            card.innerHTML = `
+                <h4 class="font-bold text-center">${wafer.waferId} (#${wafer.slotNo})</h4>
+                <div class="wafer-map-container my-2">
+                    <canvas id="map-${wafer.waferId}"></canvas>
+                </div>
+                <p class="text-sm text-center text-slate-600">Yield: ${wafer.yield.toFixed(2)}%</p>
+            `;
+            waferComparisonGridEl.appendChild(card);
+            // Must delay rendering to next tick for canvas to exist in DOM
+            setTimeout(() => {
+                const canvas = document.getElementById(`map-${wafer.waferId}`);
+                if (canvas) {
+                    renderSingleWaferMap(canvas, wafer.map);
+                }
+            }, 0);
+        });
+    }
+    
+    function renderSingleWaferMap(canvas, mapData) {
+        const ctx = canvas.getContext('2d');
+        const canvasSize = canvas.parentElement.clientWidth;
+        canvas.width = canvasSize;
+        canvas.height = canvasSize;
+        ctx.clearRect(0, 0, canvasSize, canvasSize);
+
+        if (!mapData || mapData.length === 0) return;
+        
+        const numRows = mapData.length;
+        const numCols = Math.max(...mapData.map(row => row.length));
+        const dieSize = Math.min(canvasSize / numCols, canvasSize / numRows) * 0.9;
+        const offsetX = (canvasSize - numCols * dieSize) / 2;
+        const offsetY = (canvasSize - numRows * dieSize) / 2;
+        
+        for (let y = 0; y < numRows; y++) {
+            for (let x = 0; x < mapData[y].length; x++) {
+                const char = mapData[y][x];
+                if (char === '.' || char === ' ') continue;
+
+                ctx.fillStyle = (char === '1' || char === '+') ? '#22c55e' : '#ef4444';
+                ctx.fillRect(offsetX + x * dieSize, offsetY + y * dieSize, dieSize * 0.85, dieSize * 0.85);
+            }
+        }
+    }
+
+    // --- Analysis & Charting ---
+    function performLotAnalysis() {
+        const lot = lotDataCache[selectedLotId];
+        const yields = lot.wafers.map(w => w.yield);
+        const mean = yields.reduce((a, b) => a + b, 0) / yields.length;
+        const stdDev = Math.sqrt(yields.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / yields.length);
+        
+        document.getElementById('avg-yield').textContent = `${mean.toFixed(2)}%`;
+        document.getElementById('std-dev').textContent = stdDev.toFixed(3);
+
+        const ucl = mean + 3 * stdDev;
+        const lcl = mean - 3 * stdDev;
+        const cpk = Math.min((spcSettings.usl - mean) / (3 * stdDev), (mean - spcSettings.lsl) / (3 * stdDev));
+        document.getElementById('cpk-value').textContent = cpk.toFixed(3);
+        
+        const outliers = lot.wafers.filter(w => w.yield > ucl || w.yield < lcl);
+        document.getElementById('outlier-count').textContent = outliers.length;
+
+        renderControlChart(lot.wafers, mean, ucl, lcl);
+        renderParetoChart(lot.wafers);
+    }
+    
+    function renderControlChart(wafers, mean, ucl, lcl) {
+        if (controlChart) controlChart.destroy();
+        const ctx = document.getElementById('controlChart').getContext('2d');
+        controlChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: wafers.map(w => w.slotNo),
+                datasets: [
+                    {
+                        type: 'line',
+                        label: 'Yield',
+                        data: wafers.map(w => w.yield),
+                        borderColor: '#3b82f6',
+                        backgroundColor: '#3b82f6',
+                        pointBackgroundColor: wafers.map(w => w.yield > ucl || w.yield < lcl ? '#ef4444' : '#3b82f6'),
+                        pointRadius: 4,
+                        borderWidth: 2,
+                        tension: 0.1
+                    },
+                    { type: 'line', label: 'Mean', data: Array(wafers.length).fill(mean), borderColor: '#16a34a', borderWidth: 1.5, pointRadius: 0, borderDash: [5, 5] },
+                    { type: 'line', label: 'UCL', data: Array(wafers.length).fill(ucl), borderColor: '#ef4444', borderWidth: 1.5, pointRadius: 0, fill: '+1' },
+                    { type: 'line', label: 'LCL', data: Array(wafers.length).fill(lcl), borderColor: '#ef4444', borderWidth: 1.5, pointRadius: 0, backgroundColor: 'rgba(239, 68, 68, 0.05)' }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { title: { display: true, text: 'Yield (%)' } }
+                }
+            }
+        });
+    }
+    
+    function renderParetoChart(wafers) {
+        const patternCounts = {};
+        wafers.forEach(wafer => {
+            const result = analyzeDefectPattern(wafer.map);
+            patternCounts[result.pattern] = (patternCounts[result.pattern] || 0) + 1;
+        });
+
+        const sortedPatterns = Object.entries(patternCounts).sort(([,a],[,b]) => b-a);
+        const labels = sortedPatterns.map(p => p[0]);
+        const counts = sortedPatterns.map(p => p[1]);
+        
+        let cumulative = 0;
+        const total = counts.reduce((a,b) => a+b, 0);
+        const cumulativePct = counts.map(c => {
+            cumulative += c;
+            return (cumulative / total) * 100;
+        });
+        
+        if(paretoChart) paretoChart.destroy();
+        const ctx = document.getElementById('paretoChart').getContext('2d');
+        paretoChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: '패턴 수', data: counts, backgroundColor: 'rgba(59, 130, 246, 0.6)', yAxisID: 'y' },
+                    { type: 'line', label: '누적 %', data: cumulativePct, borderColor: '#f97316', tension: 0, yAxisID: 'y1' }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Count' } },
+                    y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Cumulative %' }, min: 0, max: 100 }
+                }
+            }
+        });
+    }
+
+    function analyzeDefectPattern(mapData) {
+        if (!mapData || mapData.length === 0) return { pattern: '데이터 없음' };
+        const failCoords = [];
+        const dieCoords = [];
+        const numRows = mapData.length;
+        const numCols = Math.max(...mapData.map(r => r.length));
+        const centerX = numCols / 2;
+        const centerY = numRows / 2;
+
+        for (let y = 0; y < numRows; y++) {
+            for (let x = 0; x < mapData[y].length; x++) {
+                const char = mapData[y][x];
+                if (char !== '.' && char !== ' ') {
+                    const distance = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+                    dieCoords.push({ x, y, distance });
+                    if (char !== '1' && char !== '+') {
+                        failCoords.push({ x, y, distance });
+                    }
+                }
+            }
+        }
+        
+        if (failCoords.length < 5) return { pattern: '불량 없음 (Good)' };
+
+        const waferRadius = Math.max(...dieCoords.map(d => d.distance), 0);
+        const avgFailDistance = failCoords.reduce((a, b) => a + b.distance, 0) / failCoords.length;
+
+        if (avgFailDistance / waferRadius > 0.7) return { pattern: '가장자리 링' };
+        if (avgFailDistance / waferRadius < 0.3) return { pattern: '중심부 집중' };
+        
+        const xCounts = {}, yCounts = {};
+        failCoords.forEach(({x, y}) => {
+            xCounts[x] = (xCounts[x] || 0) + 1;
+            yCounts[y] = (yCounts[y] || 0) + 1;
+        });
+        if (Math.max(...Object.values(xCounts), 0) > failCoords.length * 0.4 || Math.max(...Object.values(yCounts), 0) > failCoords.length * 0.4) {
+            return { pattern: '스크래치' };
+        }
+        
+        let maxCluster = 0;
+        for(let i=0; i < failCoords.length; i++){
+            let clusterSize = 1;
+            for(let j=i+1; j < failCoords.length; j++){
+                const dist = Math.sqrt(Math.pow(failCoords[i].x-failCoords[j].x, 2) + Math.pow(failCoords[i].y-failCoords[j].y, 2));
+                if(dist < 5) clusterSize++;
+            }
+            if(clusterSize > maxCluster) maxCluster = clusterSize;
+        }
+        if (maxCluster > failCoords.length * 0.5 && maxCluster > 5) return { pattern: '군집' };
+        
+        return { pattern: '랜덤' };
+    }
+    
+    // --- User Actions ---
+    function setSortMode(mode) {
+        currentSort = mode;
+        sortBySlotBtn.classList.toggle('bg-blue-100', mode === 'slot');
+        sortBySlotBtn.classList.toggle('text-blue-700', mode === 'slot');
+        sortBySlotBtn.classList.toggle('bg-slate-200', mode !== 'slot');
+        sortByYieldBtn.classList.toggle('bg-blue-100', mode === 'yield');
+        sortByYieldBtn.classList.toggle('text-blue-700', mode === 'yield');
+        sortByYieldBtn.classList.toggle('bg-slate-200', mode !== 'yield');
+        renderWaferSelectionList();
+    }
+    
+    function applySpcSettings() {
+        const usl = parseFloat(uslInput.value);
+        const lsl = parseFloat(lslInput.value);
+        if(!isNaN(usl) && !isNaN(lsl) && usl > lsl) {
+            spcSettings.usl = usl;
+            spcSettings.lsl = lsl;
+            spcModal.classList.add('hidden');
+            performLotAnalysis(); // Re-run analysis with new settings
+        } else {
+            alert('유효한 USL 및 LSL 값을 입력하세요. (USL > LSL)');
+        }
+    }
+    
+    function getOutlierWafers() {
+        if(!selectedLotId) return [];
+        const lot = lotDataCache[selectedLotId];
+        const yields = lot.wafers.map(w => w.yield);
+        const mean = yields.reduce((a, b) => a + b, 0) / yields.length;
+        const stdDev = Math.sqrt(yields.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / yields.length);
+        const ucl = mean + 3 * stdDev;
+        const lcl = mean - 3 * stdDev;
+        return lot.wafers.filter(w => w.yield > ucl || w.yield < lcl);
+    }
+    
+    function createPdfReport() {
+        alert('리포트 생성 중... 완료되면 자동으로 다운로드됩니다.');
+        html2canvas(reportContainer, { scale: 2 }).then(canvas => {
+            const imgData = canvas.toDataURL('image/png');
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+            
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            const imgProps= pdf.getImageProperties(imgData);
+            const imgRatio = imgProps.width / imgProps.height;
+            const pdfRatio = pdfWidth / pdfHeight;
+            let finalWidth, finalHeight;
+
+            if(imgRatio > pdfRatio) {
+                finalWidth = pdfWidth;
+                finalHeight = pdfWidth / imgRatio;
+            } else {
+                finalHeight = pdfHeight;
+                finalWidth = pdfHeight * imgRatio;
+            }
+            const x = (pdfWidth - finalWidth) / 2;
+            const y = (pdfHeight - finalHeight) / 2;
+
+            pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
+            pdf.save(`Wafer_Analysis_Report_v2_${selectedLotId}.pdf`);
+        });
+    }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>차세대 웨이퍼 데이터 분석 대시보드</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #f8fafc; }
+        .chart-container { position: relative; width: 100%; height: 280px; }
+        .wafer-map-container { position: relative; width: 100%; max-width: 450px; aspect-ratio: 1 / 1; margin: auto; }
+        .tab-button.active { border-color: #3b82f6; color: #3b82f6; background-color: #eff6ff; }
+        .wafer-list-item.active { background-color: #dbeafe; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <!-- Landing Page -->
+    <div id="landing-page" class="flex flex-col items-center justify-center min-h-screen p-8 text-center">
+        <i class="fas fa-microchip text-6xl text-blue-500 mb-6"></i>
+        <h1 class="text-4xl font-bold text-slate-900">차세대 웨이퍼 데이터 분석 대시보드</h1>
+        <p class="text-lg text-slate-600 mt-3 max-w-2xl">로컬 폴더의 Wafer Map 데이터(*.zip)를 선택하여 롯(Lot)별 심층 분석, 자동 불량 패턴 인식 및 전문적인 리포트 생성을 시작하세요.</p>
+        <div class="mt-8">
+            <label for="zip-folder-input" class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 cursor-pointer transition-colors duration-300">
+                <i class="fas fa-folder-open mr-2"></i> Map 데이터 폴더 선택
+            </label>
+            <input type="file" id="zip-folder-input" webkitdirectory directory multiple class="hidden">
+        </div>
+        <div id="loading-state" class="hidden mt-8 flex flex-col items-center">
+            <div class="loader"></div>
+            <p class="mt-4 text-slate-600">데이터를 분석 중입니다... (<span id="progress-text"></span>)</p>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard-page" class="hidden">
+        <div class="flex h-screen bg-slate-100">
+            <!-- Sidebar -->
+            <aside class="w-80 bg-white shadow-md flex flex-col">
+                <div class="p-4 border-b">
+                    <h2 class="text-xl font-bold text-slate-900">Wafer Lot 리스트</h2>
+                </div>
+                <div class="p-4">
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="search-box" placeholder="Lot ID로 검색 (예: GKCC4)" class="w-full pl-10 pr-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                </div>
+                <div id="lot-list" class="flex-grow overflow-y-auto">
+                    <!-- Lot list will be populated here -->
+                </div>
+                <div class="p-4 border-t">
+                     <button id="change-folder-btn" class="w-full px-4 py-2 bg-slate-200 text-slate-800 font-semibold rounded-md hover:bg-slate-300 transition-colors">
+                        <i class="fas fa-folder-sync mr-2"></i>폴더 변경
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="flex-grow p-6 overflow-y-auto">
+                <div id="dashboard-content" class="hidden">
+                    <!-- Header -->
+                    <header class="flex justify-between items-start mb-6">
+                        <div>
+                            <h1 id="lot-id-header" class="text-3xl font-bold text-slate-900"></h1>
+                            <div class="flex items-center space-x-4 text-slate-500 mt-2">
+                                <span><i class="fas fa-tag mr-1"></i> 제품: <strong id="product-id-header" class="text-slate-700"></strong></span>
+                                <span><i class="fas fa-server mr-1"></i> 테스트 사이트: <strong id="test-site-header" class="text-slate-700"></strong></span>
+                                <span><i class="far fa-calendar-alt mr-1"></i> 날짜: <strong id="timestamp-header" class="text-slate-700"></strong></span>
+                            </div>
+                        </div>
+                        <button id="generate-report-btn" class="px-5 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 transition-colors">
+                            <i class="fas fa-file-pdf mr-2"></i>분석 리포트 생성
+                        </button>
+                    </header>
+                    
+                     <div id="report-container">
+                        <!-- Summary Cards -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+                            <div class="bg-white p-5 rounded-lg shadow">
+                                <h3 class="text-sm font-medium text-slate-500">Lot 평균 수율</h3>
+                                <p id="avg-yield" class="text-3xl font-bold text-green-600 mt-1"></p>
+                            </div>
+                            <div class="bg-white p-5 rounded-lg shadow">
+                                <h3 class="text-sm font-medium text-slate-500">총 웨이퍼 수</h3>
+                                <p id="total-wafers" class="text-3xl font-bold text-slate-800 mt-1"></p>
+                            </div>
+                            <div class="bg-white p-5 rounded-lg shadow">
+                                <h3 class="text-sm font-medium text-slate-500">수율 최저 웨이퍼</h3>
+                                <p id="min-yield-wafer" class="text-xl font-bold text-red-600 mt-1"></p>
+                            </div>
+                            <div class="bg-white p-5 rounded-lg shadow">
+                                <h3 class="text-sm font-medium text-slate-500">수율 최고 웨이퍼</h3>
+                                <p id="max-yield-wafer" class="text-xl font-bold text-blue-600 mt-1"></p>
+                            </div>
+                        </div>
+
+                        <!-- Main Grid -->
+                        <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                            <!-- Left Panel -->
+                            <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow">
+                                <h3 class="text-xl font-bold mb-4">롯 수율 분포</h3>
+                                <div class="chart-container">
+                                    <canvas id="lotYieldChart"></canvas>
+                                </div>
+                                <div class="mt-4">
+                                    <h3 class="text-xl font-bold mb-2">웨이퍼 리스트</h3>
+                                    <div id="wafer-list-detailed" class="h-48 overflow-y-auto border rounded-md">
+                                        <!-- wafer list for the selected lot -->
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Right Panel -->
+                            <div class="lg:col-span-3 bg-white p-6 rounded-lg shadow">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 id="wafer-id-main" class="text-2xl font-bold"></h3>
+                                    <div class="flex items-center space-x-2">
+                                        <div id="outlier-badge" class="hidden items-center px-3 py-1 bg-red-100 text-red-700 text-sm font-semibold rounded-full">
+                                            <i class="fas fa-exclamation-triangle mr-2"></i> 이상 감지
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <h4 class="text-lg font-semibold mb-2">Wafer Map</h4>
+                                        <div class="wafer-map-container bg-slate-50 rounded-md">
+                                            <canvas id="waferMapCanvas"></canvas>
+                                        </div>
+                                        <p id="wafer-yield-info" class="text-center text-sm text-slate-600 mt-2"></p>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-lg font-semibold mb-2">자동 패턴 분석 결과</h4>
+                                        <div id="pattern-analysis-result" class="p-4 bg-blue-50 border border-blue-200 rounded-md h-full">
+                                            <!-- Analysis result will be populated here -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Analysis Section -->
+                        <div id="analysis-section" class="mt-6 bg-white p-6 rounded-lg shadow">
+                            <h2 class="text-2xl font-bold mb-4">심층 분석 및 제안</h2>
+                             <div id="analysis-content">
+                                <!-- Dynamic insight content here -->
+                            </div>
+                        </div>
+                     </div>
+                </div>
+                 <div id="no-lot-selected" class="flex flex-col items-center justify-center h-full text-slate-500">
+                    <i class="fas fa-list-alt text-6xl mb-4"></i>
+                    <h2 class="text-2xl font-semibold">롯(Lot)을 선택하세요</h2>
+                    <p>좌측 리스트에서 분석할 롯을 선택해 주세요.</p>
+                </div>
+            </main>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const landingPage = document.getElementById('landing-page');
+    const dashboardPage = document.getElementById('dashboard-page');
+    const dashboardContent = document.getElementById('dashboard-content');
+    const noLotSelected = document.getElementById('no-lot-selected');
+    const zipFolderInput = document.getElementById('zip-folder-input');
+    const changeFolderBtn = document.getElementById('change-folder-btn');
+    const loadingState = document.getElementById('loading-state');
+    const progressText = document.getElementById('progress-text');
+    const lotListEl = document.getElementById('lot-list');
+    const searchBox = document.getElementById('search-box');
+    const generateReportBtn = document.getElementById('generate-report-btn');
+
+    let lotDataCache = {};
+    let lotYieldChart, waferMapCanvas, waferMapCtx;
+    let selectedLotId = null;
+    let selectedWaferId = null;
+
+    zipFolderInput.addEventListener('change', handleFolderSelect);
+    changeFolderBtn.addEventListener('click', () => zipFolderInput.click());
+
+    function handleFolderSelect(event) {
+        const files = event.target.files;
+        if (files.length === 0) return;
+
+        landingPage.classList.add('hidden');
+        dashboardPage.classList.remove('hidden');
+        dashboardContent.classList.add('hidden');
+        noLotSelected.classList.remove('hidden');
+        
+        processFiles(files);
+    }
+    
+    async function processFiles(files) {
+        loadingState.classList.remove('hidden');
+        lotDataCache = {};
+        lotListEl.innerHTML = '<div class="p-4 text-center text-slate-500">롯 데이터를 읽는 중...</div>';
+        
+        const zipFiles = Array.from(files).filter(file => file.name.toLowerCase().endsWith('.zip'));
+        let processedCount = 0;
+        
+        for (const file of zipFiles) {
+            try {
+                const lotData = await parseZipFile(file);
+                if (lotData) {
+                    lotDataCache[lotData.lotId] = lotData;
+                }
+            } catch (error) {
+                console.error(`Error processing ${file.name}:`, error);
+            }
+            processedCount++;
+            progressText.textContent = `${processedCount} / ${zipFiles.length} 파일`;
+        }
+        
+        loadingState.classList.add('hidden');
+        renderLotList();
+    }
+
+    async function parseZipFile(file) {
+        const parts = file.name.replace('.zip', '').split('_');
+        if (parts.length < 4) return null;
+
+        const lotId = parts[1];
+        const lotData = {
+            fileName: file.name,
+            productId: parts[0],
+            lotId: lotId,
+            timestamp: parts[2],
+            testSite: parts[3],
+            wafers: [],
+            summary: {}
+        };
+
+        const zip = await JSZip.loadAsync(file);
+        const farFileName = Object.keys(zip.files).find(name => name.toUpperCase().endsWith('.FAR'));
+        if (farFileName) {
+            const farContent = await zip.files[farFileName].async('text');
+            lotData.summary = parseFarFile(farContent);
+        }
+
+        const waferFiles = Object.keys(zip.files).filter(name => /\.\d{2}$/.test(name.toUpperCase()));
+        for (const wfName of waferFiles) {
+            const waferContent = await zip.files[wfName].async('text');
+            const waferInfo = parseWaferFile(waferContent);
+            lotData.wafers.push(waferInfo);
+        }
+        
+        lotData.wafers.sort((a,b) => a.slotNo - b.slotNo);
+        return lotData;
+    }
+
+    function parseFarFile(content) {
+        const lines = content.split('\n').filter(line => line.trim() !== '');
+        return lines.slice(4).map(line => {
+            const parts = line.trim().split(/\s+/);
+            return { mapping: parts[0], waferId: parts[1], pass: parseInt(parts[2], 10) };
+        });
+    }
+
+    function parseWaferFile(content) {
+        const lines = content.split('\n');
+        const header = {};
+        const mapData = [];
+        let isMap = false;
+
+        lines.forEach(line => {
+            if (line.includes(':')) {
+                const [key, value] = line.split(':', 2);
+                header[key.trim()] = value.trim();
+            } else if (line.trim().startsWith('.')) {
+                isMap = true;
+                mapData.push(line.trim());
+            } else if(isMap && line.trim() !== ''){
+                 mapData.push(line.trim());
+            }
+        });
+
+        const totalDie = parseInt(header['Total test die'] || 0, 10);
+        const passDie = parseInt(header['Pass Die'] || 0, 10);
+        const yieldValue = totalDie > 0 ? (passDie / totalDie) * 100 : 0;
+
+        return {
+            slotNo: parseInt(header['Slot No'] || 0, 10),
+            waferId: header['Wafer ID'],
+            totalDie, passDie, 
+            failDie: parseInt(header['Fail Die'] || 0, 10),
+            yield: yieldValue,
+            map: mapData
+        };
+    }
+    
+    function renderLotList() {
+        lotListEl.innerHTML = '';
+        const query = searchBox.value.toLowerCase();
+        const lotIds = Object.keys(lotDataCache).filter(id => id.toLowerCase().includes(query));
+
+        if (lotIds.length === 0) {
+            lotListEl.innerHTML = '<div class="p-4 text-center text-slate-500">일치하는 롯이 없습니다.</div>';
+            return;
+        }
+
+        lotIds.forEach(lotId => {
+            const lot = lotDataCache[lotId];
+            const li = document.createElement('div');
+            li.className = 'p-4 border-b cursor-pointer hover:bg-slate-100';
+            li.dataset.lotId = lotId;
+            li.innerHTML = `
+                <h3 class="font-bold text-blue-600">${lot.lotId}</h3>
+                <p class="text-sm text-slate-500">${lot.productId}</p>
+                <p class="text-sm text-slate-500">${lot.fileName}</p>
+            `;
+            li.addEventListener('click', () => {
+                selectedLotId = lotId;
+                renderDashboard();
+                document.querySelectorAll('#lot-list > div').forEach(el => el.classList.remove('bg-blue-100'));
+                li.classList.add('bg-blue-100');
+            });
+            lotListEl.appendChild(li);
+        });
+    }
+    
+    searchBox.addEventListener('keyup', renderLotList);
+
+    function renderDashboard() {
+        if (!selectedLotId) return;
+        const lot = lotDataCache[selectedLotId];
+
+        dashboardContent.classList.remove('hidden');
+        noLotSelected.classList.add('hidden');
+        
+        document.getElementById('lot-id-header').textContent = lot.lotId;
+        document.getElementById('product-id-header').textContent = lot.productId;
+        document.getElementById('test-site-header').textContent = lot.testSite;
+        document.getElementById('timestamp-header').textContent = lot.timestamp;
+
+        const yields = lot.wafers.map(w => w.yield);
+        const avgYield = yields.reduce((a, b) => a + b, 0) / yields.length;
+        document.getElementById('avg-yield').textContent = `${avgYield.toFixed(2)}%`;
+        document.getElementById('total-wafers').textContent = lot.wafers.length;
+
+        const sortedWafers = [...lot.wafers].sort((a,b) => a.yield - b.yield);
+        document.getElementById('min-yield-wafer').textContent = `${sortedWafers[0].waferId} (${sortedWafers[0].yield.toFixed(1)}%)`;
+        document.getElementById('max-yield-wafer').textContent = `${sortedWafers[sortedWafers.length - 1].waferId} (${sortedWafers[sortedWafers.length-1].yield.toFixed(1)}%)`;
+
+        if (lotYieldChart) lotYieldChart.destroy();
+        const yieldChartCtx = document.getElementById('lotYieldChart').getContext('2d');
+        lotYieldChart = new Chart(yieldChartCtx, {
+            type: 'bar',
+            data: {
+                labels: lot.wafers.map(w => w.slotNo),
+                datasets: [{
+                    label: '수율 (%)',
+                    data: lot.wafers.map(w => w.yield),
+                    backgroundColor: lot.wafers.map(w => w.yield < avgYield - 5 ? 'rgba(239, 68, 68, 0.6)' : 'rgba(59, 130, 246, 0.6)'),
+                    borderColor: lot.wafers.map(w => w.yield < avgYield - 5 ? 'rgb(239, 68, 68)' : 'rgb(59, 130, 246)'),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { x: { grid: { display: false } }, y: { suggestedMin: Math.max(0, Math.min(...yields) - 5) } },
+                plugins: { legend: { display: false }, tooltip: {
+                    callbacks: { title: (ctx) => `Wafer #${ctx[0].label} (${lot.wafers[ctx[0].dataIndex].waferId})` }
+                }},
+                onClick: (evt, elements) => {
+                    if (elements.length > 0) {
+                        selectWafer(lot.wafers[elements[0].index].waferId);
+                    }
+                }
+            }
+        });
+
+        const waferListDetailedEl = document.getElementById('wafer-list-detailed');
+        waferListDetailedEl.innerHTML = '';
+        sortedWafers.forEach(wafer => {
+            const div = document.createElement('div');
+            div.className = 'wafer-list-item flex justify-between p-2 border-b cursor-pointer hover:bg-slate-100';
+            div.dataset.waferId = wafer.waferId;
+            div.innerHTML = `
+                <span>#${String(wafer.slotNo).padStart(2, '0')}: ${wafer.waferId}</span>
+                <span class="font-semibold ${wafer.yield < avgYield - 5 ? 'text-red-600' : 'text-slate-700'}">${wafer.yield.toFixed(2)}%</span>
+            `;
+            div.addEventListener('click', () => selectWafer(wafer.waferId));
+            waferListDetailedEl.appendChild(div);
+        });
+
+        if (lot.wafers.length > 0) {
+            selectWafer(lot.wafers[0].waferId);
+        }
+    }
+    
+    function selectWafer(waferId) {
+        selectedWaferId = waferId;
+        const lot = lotDataCache[selectedLotId];
+        const wafer = lot.wafers.find(w => w.waferId === waferId);
+        
+        document.querySelectorAll('.wafer-list-item').forEach(el => el.classList.remove('active'));
+        document.querySelector(`.wafer-list-item[data-wafer-id="${waferId}"]`)?.classList.add('active');
+
+        document.getElementById('wafer-id-main').textContent = wafer.waferId;
+        document.getElementById('wafer-yield-info').textContent = `수율: ${wafer.yield.toFixed(2)}% (${wafer.passDie} / ${wafer.totalDie})`;
+        
+        const avgYield = lot.wafers.map(w => w.yield).reduce((a,b) => a+b,0) / lot.wafers.length;
+        document.getElementById('outlier-badge').classList.toggle('hidden', wafer.yield >= avgYield - 5);
+
+        if (!waferMapCanvas) {
+            waferMapCanvas = document.getElementById('waferMapCanvas');
+            waferMapCtx = waferMapCanvas.getContext('2d');
+        }
+        renderWaferMap(wafer.map);
+
+        const analysisResult = analyzeDefectPattern(wafer.map);
+        renderAnalysisResult(analysisResult);
+    }
+
+    function renderWaferMap(mapData) {
+        const canvasSize = waferMapCanvas.parentElement.clientWidth;
+        waferMapCanvas.width = canvasSize;
+        waferMapCanvas.height = canvasSize;
+        waferMapCtx.clearRect(0, 0, canvasSize, canvasSize);
+
+        if (!mapData || mapData.length === 0) return;
+        
+        const numRows = mapData.length;
+        const numCols = Math.max(...mapData.map(row => row.length));
+        const dieSize = Math.min(canvasSize / numCols, canvasSize / numRows) * 0.9;
+        const offsetX = (canvasSize - numCols * dieSize) / 2;
+        const offsetY = (canvasSize - numRows * dieSize) / 2;
+        
+        for (let y = 0; y < numRows; y++) {
+            for (let x = 0; x < mapData[y].length; x++) {
+                const char = mapData[y][x];
+                if (char === '.' || char === ' ') continue;
+
+                waferMapCtx.fillStyle = (char === '1' || char === '+') ? '#22c55e' : '#ef4444';
+                waferMapCtx.fillRect(offsetX + x * dieSize, offsetY + y * dieSize, dieSize * 0.85, dieSize * 0.85);
+            }
+        }
+    }
+
+    function analyzeDefectPattern(mapData) {
+        const failCoords = [];
+        const dieCoords = [];
+        const numRows = mapData.length;
+        if(numRows === 0) return { pattern: '데이터 없음' };
+        const numCols = mapData[0].length;
+        const centerX = numCols / 2;
+        const centerY = numRows / 2;
+        
+        for(let y = 0; y < numRows; y++) {
+            for(let x = 0; x < mapData[y].length; x++) {
+                const char = mapData[y][x];
+                 if(char !== '.' && char !== ' ') {
+                    const distance = Math.sqrt((x-centerX)**2 + (y-centerY)**2);
+                    dieCoords.push({x,y,distance});
+                    if(char !== '1' && char !== '+'){
+                       failCoords.push({x,y,distance});
+                    }
+                }
+            }
+        }
+        
+        if (failCoords.length < 5) return { pattern: '불량 없음 (Good)' };
+
+        const waferRadius = Math.max(...dieCoords.map(d => d.distance));
+        const failDistances = failCoords.map(f => f.distance);
+        const avgFailDistance = failDistances.reduce((a,b) => a+b, 0) / failCoords.length;
+
+        if (avgFailDistance / waferRadius > 0.7) return { pattern: '가장자리 링 (Edge Ring)' };
+        if (avgFailDistance / waferRadius < 0.3) return { pattern: '중심부 집중 (Center)' };
+        
+        const xCounts = {}, yCounts = {};
+        failCoords.forEach(({x, y}) => {
+            xCounts[x] = (xCounts[x] || 0) + 1;
+            yCounts[y] = (yCounts[y] || 0) + 1;
+        });
+        if (Math.max(...Object.values(xCounts)) > failCoords.length * 0.3 ||
+            Math.max(...Object.values(yCounts)) > failCoords.length * 0.3) {
+            return { pattern: '스크래치 (Scratch)' };
+        }
+
+        const sortedFails = [...failCoords].sort((a,b) => a.x - b.x);
+        let maxCluster = 0;
+        for(let i=0; i < sortedFails.length; i++){
+            let clusterSize = 1;
+            for(let j=i+1; j < sortedFails.length; j++){
+                const dist = Math.sqrt((sortedFails[i].x-sortedFails[j].x)**2 + (sortedFails[i].y-sortedFails[j].y)**2);
+                if(dist < 5) {
+                    clusterSize++;
+                }
+            }
+            if(clusterSize > maxCluster) maxCluster = clusterSize;
+        }
+
+        if (maxCluster > failCoords.length * 0.4 && maxCluster > 5) {
+             return { pattern: '군집 (Cluster)' };
+        }
+
+        return { pattern: '랜덤 분포 (Random)' };
+    }
+
+    function renderAnalysisResult(result) {
+        const resultEl = document.getElementById('pattern-analysis-result');
+        const analysisContentEl = document.getElementById('analysis-content');
+        let iconClass, title, contentHTML;
+
+        switch(result.pattern) {
+            case '가장자리 링 (Edge Ring)':
+                iconClass = 'fa-dot-circle text-red-500';
+                title = '가장자리 링 (Edge Ring)';
+                contentHTML = getInsightHTML('edge');
+                break;
+            case '중심부 집중 (Center)':
+                iconClass = 'fa-bullseye text-orange-500';
+                title = '중심부 집중 (Center)';
+                contentHTML = getInsightHTML('center');
+                break;
+            case '스크래치 (Scratch)':
+                iconClass = 'fa-slash text-yellow-500';
+                title = '스크래치 (Scratch)';
+                contentHTML = getInsightHTML('scratch');
+                break;
+            case '군집 (Cluster)':
+                 iconClass = 'fa-circle-nodes text-purple-500';
+                 title = '군집 (Cluster)';
+                 contentHTML = getInsightHTML('cluster');
+                 break;
+            default:
+                iconClass = 'fa-random text-gray-500';
+                title = '랜덤 분포 (Random)';
+                contentHTML = getInsightHTML('random');
+        }
+
+        resultEl.innerHTML = `
+            <div class="flex items-center">
+                <i class="fas ${iconClass} text-3xl w-10"></i>
+                <div class="ml-3">
+                    <p class="font-semibold text-lg">${title}</p>
+                    <p class="text-sm text-slate-600">주요 불량 패턴으로 식별됨</p>
+                </div>
+            </div>
+            <p class="text-xs text-slate-500 mt-4">※ 이 분석은 맵 데이터의 공간 분포를 기반으로 한 추정이며, 정확한 원인 규명을 위해서는 CP/EDS 데이터 연계 분석이 필요합니다.</p>
+        `;
+        analysisContentEl.innerHTML = contentHTML;
+    }
+
+    function getInsightHTML(patternType) {
+        const insights = {
+            edge: {
+                title: "Edge Ring 패턴 분석",
+                causes: [
+                    { title: "전공정 (Front-end)", items: ["<strong>CMP (화학기계연마) 불균일:</strong> 웨이퍼 가장자리 연마율이 높아 발생하는 Edge Roll-off 현상", "<strong>Etch (식각) 불균일:</strong> 플라즈마 밀도 또는 가스 유량의 중심-외곽 불균일", "<strong>증착/코팅 불균일:</strong> Spin coating 시 가장자리 박막 두께 문제 또는 응력(Stress) 발생"] },
+                    { title: "테스트 (Test)", items: ["<strong>프로브 카드 접촉 불량:</strong> 웨이퍼 외곽부 프로브 팁의 과도한 압력(overdrive) 또는 오염"] }
+                ],
+                risks: [
+                    { title: "후공정 (Back-end)", items: ["<strong>다이싱(Dicing) 시 균열/파손:</strong> 기계적 응력이 가장자리에 집중되어 다이 강도 저하", "<strong>패키징 수율 저하:</strong> 가장자리 다이의 잠재적 결함이 패키징 스트레스로 인해 발현"] },
+                    { title: "신뢰성 (Reliability)", items: ["<strong>잠재적 신뢰성 이슈:</strong> 전기적으로는 정상이지만 물리적 스트레스에 취약하여 필드 불량 발생 가능"] }
+                ]
+            },
+            center: {
+                 title: "Center 패턴 분석",
+                 causes: [
+                    { title: "전공정 (Front-end)", items: ["<strong>증착/식각 공정 중심부 편차:</strong> 공정 장비의 가스 주입구나 배기구 설계 문제로 중심부 공정 속도가 다른 경우", "<strong>레티클(Reticle) 문제:</strong> 노광 공정 시 사용되는 마스크의 중심부 결함 또는 오염", "<strong>열처리(Annealing) 불균일:</strong> 웨이퍼 중심부의 온도 편차 발생"] },
+                    { title: "테스트 (Test)", items: ["<strong>프로브 카드 중심부 문제:</strong> 프로브 팁의 잦은 접촉으로 인한 중심부 마모 또는 손상"] }
+                 ],
+                 risks: [
+                    { title: "수율 (Yield)", items: ["<strong>집중적인 수율 손실:</strong> 불량이 특정 영역에 집중되어, 해당 영역의 모든 다이가 불량 처리될 수 있음", "<strong>공정 장비의 근본 문제 가능성:</strong> 특정 장비의 유지보수 또는 교체가 필요함을 시사"] }
+                 ]
+            },
+            scratch: {
+                title: "Scratch 패턴 분석",
+                causes: [
+                   { title: "공정/장비 핸들링", items: ["<strong>웨이퍼 이송 로봇 오류:</strong> 로봇 암(Arm)이나 엔드 이펙터(End-effector)의 오작동 또는 오염", "<strong>장비 내 물리적 접촉:</strong> 웨이퍼 척(Chuck)이나 가이드 핀 등 장비 내부 구조물과의 마찰", "<strong>수동 취급 부주의:</strong> 작업자의 핀셋(tweezer) 등에 의한 물리적 손상"] },
+                   { title: "테스트 (Test)", items: ["<strong>프로브 팁 끌림 현상:</strong> 프로브 카드 정렬(alignment) 오류로 인해 팁이 웨이퍼 표면을 긁으며 이동"] }
+                ],
+                risks: [
+                   { title: "치명적 결함", items: ["<strong>회로 단선/단락:</strong> 스크래치로 인해 금속 배선이 끊어지거나 서로 연결되어 즉각적인 기능 불량 유발", "<strong>롯 전체 오염 가능성:</strong> 스크래치에서 발생한 파티클(particle)이 다른 웨이퍼나 장비로 전이될 수 있음"] }
+                ]
+            },
+            cluster: {
+                title: "Cluster 패턴 분석",
+                causes: [
+                   { title: "공정 결함", items: ["<strong>파티클(Particle) 오염:</strong> 특정 공정 단계에서 유입된 이물질이 해당 영역에 집중적인 결함 유발", "<strong>레티클 결함의 반복:</strong> 노광 공정 시 마스크의 특정 부위 결함이 스텝(Step)마다 반복되어 나타남", "<strong>공정 중 국소적 이상:</strong> 화학 물질의 잔류나 국부적인 온도 이상 등"] },
+                   { title: "장비 문제", items: ["<strong>장비 척(Chuck) 오염:</strong> 웨이퍼를 고정하는 척의 특정 부위 오염으로 인한 반복적인 불량 발생"] }
+                ],
+                risks: [
+                   { 
+                     title: "수율 예측 불확실성 및 반복성", 
+                     items: [
+                       "군집 불량은 발생 위치와 크기가 불규칙하여 수율 예측을 어렵게 함",
+                       "원인이 해결되지 않으면 동일한 패턴이 다른 웨이퍼나 롯에서도 반복될 수 있음"
+                     ]
+                   }
+                ]
+            },
+            random: {
+                title: "Random 패턴 분석",
+                causes: [
+                   { title: "전반적 공정 안정성", items: ["<strong>Systemic 공정 이슈:</strong> 특정 공정의 미세한 변동이 웨이퍼 전반에 걸쳐 무작위적으로 불량 유발", "<strong>설계 마진 부족:</strong> IC 설계 자체가 공정 변화에 민감하여, 사소한 편차에도 불량이 발생할 수 있음"] },
+                   { title: "테스트 (Test)", items: ["<strong>테스트 프로그램 안정성:</strong> 테스트 조건이 불안정하거나 노이즈(Noise)에 민감하여 일시적인 오류 발생 가능"] }
+                ],
+                risks: [
+                   { 
+                     title: "원인 분석의 어려움 및 근본적 문제", 
+                     items: [
+                       "불량 위치에 규칙성이 없어 근본 원인을 추적하기가 가장 까다로움", 
+                       "기초 공정 능력(Baseline) 문제는 팹(Fab)의 전반적인 공정 관리 능력 또는 설계 자체의 완성도 문제일 수 있음"
+                     ] 
+                   }
+                ]
+            }
+        };
+
+        const insight = insights[patternType] || insights.random;
+        let html = `<h3 class="text-xl font-bold mb-3">${insight.title}</h3>`;
+        html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-6">';
+        
+        html += '<div><h4 class="font-semibold text-lg mb-2">예상 원인</h4><div class="space-y-3">';
+        insight.causes.forEach(cause => {
+            html += `<div class="p-3 bg-slate-50 rounded-md">
+                        <p class="font-semibold text-slate-700">${cause.title}</p>
+                        <ul class="list-disc list-inside text-sm text-slate-600 mt-1 space-y-1">${cause.items.map(i => `<li>${i}</li>`).join('')}</ul>
+                     </div>`;
+        });
+        html += '</div></div>';
+
+        html += '<div><h4 class="font-semibold text-lg mb-2">잠재 리스크 및 제안</h4><div class="space-y-3">';
+        insight.risks.forEach(risk => {
+            html += `<div class="p-3 bg-red-50 rounded-md">
+                        <p class="font-semibold text-red-700">${risk.title}</p>
+                        <ul class="list-disc list-inside text-sm text-red-600 mt-1 space-y-1">${risk.items.map(i => `<li>${i}</li>`).join('')}</ul>
+                     </div>`;
+        });
+        html += '</div></div>';
+        
+        html += '</div>';
+        return html;
+    }
+
+    generateReportBtn.addEventListener('click', () => {
+        const reportContent = document.getElementById('report-container');
+        const lotId = lotDataCache[selectedLotId].lotId;
+        
+        html2canvas(reportContent, { scale: 2 }).then(canvas => {
+            const imgData = canvas.toDataURL('image/png');
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({
+                orientation: 'p',
+                unit: 'mm',
+                format: 'a4'
+            });
+            
+            const imgProps= pdf.getImageProperties(imgData);
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+            
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save(`Wafer_Analysis_Report_${lotId}.pdf`);
+        });
+    });
+
+});
+</script>
+</body>
+</html>
+```
+
+### 2. 대시보드 게시 및 공유 방법 안내
+
+완성된 대시보드를 실제 업무에서 활용하고 공유하는 방법을 다시 한번 정리해 드립니다.
+
+
+## 대시보드 게시 및 공유 방법 안내
+
+이 대시보드는 모든 기능이 하나의 HTML 파일 안에 포함된 '독립 실행형(Standalone)' 웹 애플리케이션입니다. 따라서 다음과 같은 방법으로 쉽게 공유하고 사용할 수 있습니다.
+
+### 방법 1: 파일 직접 공유 (가장 간단하고 안전한 방법)
+
+이 방법은 내부망에서 팀원들과 공유할 때 가장 추천되는 방식입니다.
+
+1.  **HTML 파일 저장:** 현재 대시보드 코드 전체를 PC에 `Wafer_Dashboard.html`과 같은 이름으로 저장합니다.
+2.  **파일 공유:** 저장한 HTML 파일을 이메일, 사내 메신저, 네트워크 공유 폴더 등을 통해 동료에게 전달합니다.
+3.  **실행:** 파일을 받은 동료는 인터넷 브라우저(Chrome, Edge 등)에서 해당 HTML 파일을 열기만 하면 바로 대시보드를 사용할 수 있습니다. 각자 분석하고 싶은 `Map 데이터` 폴더를 선택하여 작업을 시작할 수 있습니다.
+
+* **장점:**
+    * 가장 간단하고 빠릅니다.
+    * 분석 데이터(`Map 데이터`)가 외부로 절대 유출되지 않아 보안성이 가장 높습니다.
+    * 인터넷 연결 없이도 작동합니다.
+* **단점/주의사항:**
+    * 사용자는 각자의 PC에 분석할 `Map 데이터` 폴더를 가지고 있어야 합니다.
+
+---
+
+### 방법 2: 정적 웹 호스팅 (가장 전문적인 방법)
+
+웹에 게시하여 누구나 접근할 수 있도록 하거나, 안정적인 링크를 통해 기능을 시연하고 싶을 때 사용하는 가장 표준적인 방법입니다. **Netlify**가 가장 간편합니다.
+
+#### Netlify Drop (가장 쉬움)
+
+1.  [Netlify Drop](https://app.netlify.com/drop) 사이트로 이동합니다. (회원가입 필요 없음)
+2.  `Wafer_Dashboard.html` 파일을 웹페이지의 점선 영역으로 드래그 앤 드롭합니다.
+3.  잠시 후, Netlify가 자동으로 생성한 고유한 웹사이트 주소(`https://unique-name-12345.netlify.app`)가 나타납니다. 이 주소를 공유하면 됩니다.
+
+#### GitHub Pages
+
+1.  **GitHub 계정 생성 및 로그인:** [GitHub](https://github.com/)에 계정이 없다면 생성합니다.
+2.  **새 저장소(Repository) 생성:** `wafer-dashboard`와 같은 이름으로 새 'Public' 저장소를 만듭니다.
+3.  **파일 업로드:** 생성된 저장소에 `Wafer_Dashboard.html` 파일을 업로드하고, 파일명을 **`index.html`**로 변경합니다. (이름이 중요합니다)
+4.  **Pages 설정:** 저장소의 `Settings` 탭 > `Pages` 메뉴로 이동합니다.
+5.  `Branch`를 `main`(또는 `master`)으로 선택하고 `Save` 버튼을 누릅니다.
+6.  몇 분 후, `https://<사용자이름>.github.io/wafer-dashboard/` 형식의 주소가 활성화되며, 이 주소로 대시보드에 접속할 수 있습니다.
+
+* **장점:**
+    * 무료로 안정적인 웹 호스팅이 가능합니다.
+    * 누구에게나 쉽게 공유할 수 있는 전문적인 링크가 생성됩니다.
+* **단점/주의사항:**
+    * **중요:** 이 방법을 사용해도 **데이터는 사용자의 PC에 남아 있습니다.** 웹사이트에 접속한 각 사용자는 여전히 자신의 로컬 `Map 데이터` 폴더를 직접 선택해야 합니다. 대시보드 파일만 웹에 올라가고, 분석 데이터는 올라가지 않습
