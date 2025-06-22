@@ -1,0 +1,42 @@
+# Semiconductor Wafer Map Data - CONFIDENTIAL
+# This folder contains sensitive production data that should never be exposed
+sample-data/
+
+# STDF files and compressed data
+*.stdf
+*.stdf.gz
+*.wfrSum*
+
+# Lot summary files
+*.lotSumTXT
+*.lotsumtxt
+
+# Production data patterns
+*_MLC*
+*_GAPM*
+*_GHHL*
+*_S95WR*
+*_S95WS*
+*_S83MG*
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node modules (if any)
+node_modules/
+
+# Build artifacts
+dist/
+build/ 

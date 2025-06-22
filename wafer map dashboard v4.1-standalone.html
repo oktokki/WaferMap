@@ -1,0 +1,4166 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wafer Map Dashboard v4.1 - Refactored</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔬</text></svg>">
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.1.0/chartjs-plugin-annotation.min.js"></script>
+    
+    <!-- Fonts and Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body class="text-slate-800">
+    <div id="dashboard-page" class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-white px-6 py-3 border-b flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900">Wafer Map Dashboard v4.1 <span class="text-sm font-normal text-blue-600">(빌드정보: 2025- 06- 22- 오후 06:54)</span></h1>
+                <p class="text-sm text-slate-500">반도체 품질 관리 통합 대시보드 (리팩토링 버전)</p>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav id="main-tabs" class="flex border-b bg-slate-50">
+            <button data-tab="summary" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300 active">Summary</button>
+            <button data-tab="map-analysis" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">MAP분석</button>
+            <button data-tab="test-analysis" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">Test Analysis</button>
+            <button data-tab="binning-analysis" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">Binning Analysis</button>
+            <button data-tab="risk-assessment" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">RISK평가</button>
+            <button data-tab="final-test" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">Final Test</button>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="p-6">
+            <!-- Summary Tab -->
+            <div id="summary-tab" class="tab-content">
+                <div class="mb-6">
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">📊 Wafer Map Dashboard Overview</h1>
+                    <p class="text-gray-600">Comprehensive semiconductor wafer testing and analysis platform</p>
+                </div>
+
+                <!-- Quick Stats Overview -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-blue-100 rounded-lg">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Total Files</p>
+                                <p id="summary-total-files" class="text-2xl font-bold text-gray-900">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-green-100 rounded-lg">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Overall Yield</p>
+                                <p id="summary-overall-yield" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-purple-100 rounded-lg">
+                                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Total Lots</p>
+                                <p id="summary-total-lots" class="text-2xl font-bold text-gray-900">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-yellow-100 rounded-lg">
+                                <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Last Updated</p>
+                                <p id="summary-last-updated" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Welcome Message -->
+                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200">
+                    <h2 class="text-xl font-semibold text-blue-800 mb-3">🚀 Welcome to Wafer Map Dashboard v4.1</h2>
+                    <p class="text-blue-700 mb-4">
+                        This dashboard provides comprehensive analysis tools for semiconductor wafer testing data. 
+                        Upload your STDF summary files to get started with detailed analytics.
+                    </p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div class="bg-white p-3 rounded border">
+                            <h3 class="font-semibold text-gray-800 mb-1">📁 File Upload</h3>
+                            <p class="text-gray-600">Upload .lotSumTXT files in the Final Test tab</p>
+                        </div>
+                        <div class="bg-white p-3 rounded border">
+                            <h3 class="font-semibold text-gray-800 mb-1">📊 Analysis</h3>
+                            <p class="text-gray-600">View detailed test and binning analysis</p>
+                        </div>
+                        <div class="bg-white p-3 rounded border">
+                            <h3 class="font-semibold text-gray-800 mb-1">📈 Reports</h3>
+                            <p class="text-gray-600">Export comprehensive reports and charts</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MAP Analysis Tab -->
+            <div id="map-analysis-tab" class="tab-content hidden">
+                <div class="mb-6">
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">🗺️ Wafer Map Analysis</h1>
+                    <p class="text-gray-600">Visual wafer map analysis and defect pattern recognition</p>
+                </div>
+
+                <!-- Map Analysis Controls -->
+                <div class="mb-6 p-4 bg-indigo-50 rounded-lg">
+                    <div class="flex flex-wrap gap-4 items-center">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Map Type</label>
+                            <select id="map-type-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="yield">Yield Map</option>
+                                <option value="defect">Defect Map</option>
+                                <option value="bin">Bin Map</option>
+                                <option value="site">Site Map</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Wafer Size</label>
+                            <select id="wafer-size-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="6">6 inch</option>
+                                <option value="8">8 inch</option>
+                                <option value="12" selected>12 inch</option>
+                                <option value="18">18 inch</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Color Scheme</label>
+                            <select id="color-scheme-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="standard">Standard</option>
+                                <option value="heat">Heat Map</option>
+                                <option value="rainbow">Rainbow</option>
+                                <option value="grayscale">Grayscale</option>
+                            </select>
+                        </div>
+                        <button id="refresh-map-analysis" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">
+                            🔄 Refresh Map
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Wafer Map Display -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                    <!-- Main Wafer Map -->
+                    <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📊 Wafer Map Visualization</h3>
+                        <div id="wafer-map-container" class="h-96 flex items-center justify-center text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+                            <div class="text-center">
+                                <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 4m0 13V4m-6 3l6-3"></path>
+                                </svg>
+                                <p class="text-lg font-medium">Upload files to view wafer map</p>
+                                <p class="text-sm text-gray-400">Select files in the Final Test tab to generate wafer map visualization</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Map Statistics -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📈 Map Statistics</h3>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Total Sites</span>
+                                <span id="map-total-sites" class="font-semibold">--</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Pass Sites</span>
+                                <span id="map-pass-sites" class="font-semibold text-green-600">--</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Fail Sites</span>
+                                <span id="map-fail-sites" class="font-semibold text-red-600">--</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Yield %</span>
+                                <span id="map-yield-percent" class="font-semibold text-blue-600">--</span>
+                            </div>
+                            <hr class="my-4">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Defect Density</span>
+                                <span id="map-defect-density" class="font-semibold">--</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Cluster Score</span>
+                                <span id="map-cluster-score" class="font-semibold">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Defect Pattern Analysis -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Defect Distribution -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">🎯 Defect Distribution</h3>
+                        <div id="defect-distribution-chart" class="h-64 flex items-center justify-center text-gray-500">
+                            <p>Chart will be displayed here</p>
+                        </div>
+                    </div>
+
+                    <!-- Spatial Analysis -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📍 Spatial Analysis</h3>
+                        <div id="spatial-analysis-chart" class="h-64 flex items-center justify-center text-gray-500">
+                            <p>Chart will be displayed here</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pattern Recognition Results -->
+                <div class="bg-white rounded-lg shadow border">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">🔍 Pattern Recognition Results</h3>
+                    </div>
+                    <div class="p-6">
+                        <div id="pattern-results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <!-- Pattern results will be populated here -->
+                            <div class="text-center text-gray-500">
+                                <p>Upload files to analyze defect patterns</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Analysis Tab -->
+            <div id="test-analysis-tab" class="tab-content hidden">
+                <div class="mb-6">
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">🔬 Test Analysis Dashboard</h1>
+                    <p class="text-gray-600">Comprehensive test performance analysis and optimization insights</p>
+                </div>
+
+                <!-- Test Analysis Controls -->
+                <div class="mb-6 p-4 bg-blue-50 rounded-lg">
+                    <div class="flex flex-wrap gap-4 items-center">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Test Type Filter</label>
+                            <select id="test-type-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="all">All Tests</option>
+                                <option value="dc">DC Tests</option>
+                                <option value="ac">AC Tests</option>
+                                <option value="functional">Functional Tests</option>
+                                <option value="parametric">Parametric Tests</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Time Range</label>
+                            <select id="time-range-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="7d">Last 7 Days</option>
+                                <option value="30d">Last 30 Days</option>
+                                <option value="90d">Last 90 Days</option>
+                                <option value="all">All Time</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Device Filter</label>
+                            <select id="device-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="all">All Devices</option>
+                            </select>
+                        </div>
+                        <button id="refresh-test-analysis" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
+                            🔄 Refresh Analysis
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Test Performance Overview -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-green-100 rounded-lg">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Overall Yield</p>
+                                <p id="overall-yield" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-blue-100 rounded-lg">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Test Time</p>
+                                <p id="avg-test-time" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-yellow-100 rounded-lg">
+                                <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Failure Rate</p>
+                                <p id="failure-rate" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-purple-100 rounded-lg">
+                                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Test Count</p>
+                                <p id="total-tests" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test Analysis Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Test Yield Trend -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📈 Test Yield Trend</h3>
+                        <div id="test-yield-chart" class="h-64 flex items-center justify-center text-gray-500">
+                            <p>Chart will be displayed here</p>
+                        </div>
+                    </div>
+
+                    <!-- Test Failure Distribution -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">🎯 Test Failure Distribution</h3>
+                        <div id="test-failure-chart" class="h-64 flex items-center justify-center text-gray-500">
+                            <p>Chart will be displayed here</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test Performance Table -->
+                <div class="bg-white rounded-lg shadow border">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">📊 Test Performance Details</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table id="test-performance-table" class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Test Name</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Yield (%)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fail Count</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Time (ms)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="test-performance-tbody" class="bg-white divide-y divide-gray-200">
+                                <!-- Test rows will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Test Optimization Recommendations -->
+                <div class="mt-6 bg-white rounded-lg shadow border">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">💡 Test Optimization Recommendations</h3>
+                    </div>
+                    <div id="test-recommendations" class="p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Recommendations will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Binning Analysis Tab -->
+            <div id="binning-analysis-tab" class="tab-content hidden">
+                <div class="mb-6">
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">📦 Binning Analysis Dashboard</h1>
+                    <p class="text-gray-600">Advanced binning analysis and yield optimization insights</p>
+                </div>
+
+                <!-- Binning Analysis Controls -->
+                <div class="mb-6 p-4 bg-green-50 rounded-lg">
+                    <div class="flex flex-wrap gap-4 items-center">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Bin Category</label>
+                            <select id="bin-category-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="all">All Bins</option>
+                                <option value="pass">Pass Bins</option>
+                                <option value="fail">Fail Bins</option>
+                                <option value="marginal">Marginal Bins</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Analysis Period</label>
+                            <select id="bin-period-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="7d">Last 7 Days</option>
+                                <option value="30d">Last 30 Days</option>
+                                <option value="90d">Last 90 Days</option>
+                                <option value="all">All Time</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+                            <select id="bin-sort-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="count">Count</option>
+                                <option value="percentage">Percentage</option>
+                                <option value="trend">Trend</option>
+                            </select>
+                        </div>
+                        <button id="refresh-binning-analysis" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm">
+                            🔄 Refresh Analysis
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Binning Overview Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-green-100 rounded-lg">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Total Bins</p>
+                                <p id="total-bins" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-blue-100 rounded-lg">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Pass Rate</p>
+                                <p id="pass-rate" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-red-100 rounded-lg">
+                                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Fail Rate</p>
+                                <p id="fail-rate" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-yellow-100 rounded-lg">
+                                <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Marginal Rate</p>
+                                <p id="marginal-rate" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Binning Analysis Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Bin Distribution Chart -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📊 Bin Distribution</h3>
+                        <div id="bin-distribution-chart" class="h-64 flex items-center justify-center text-gray-500">
+                            <p>Chart will be displayed here</p>
+                        </div>
+                    </div>
+
+                    <!-- Bin Trend Analysis -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📈 Bin Trend Analysis</h3>
+                        <div id="bin-trend-chart" class="h-64 flex items-center justify-center text-gray-500">
+                            <p>Chart will be displayed here</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Binning Details Table -->
+                <div class="bg-white rounded-lg shadow border">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">📋 Binning Details</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table id="binning-details-table" class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bin Code</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Count</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Percentage</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trend</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="binning-details-tbody" class="bg-white divide-y divide-gray-200">
+                                <!-- Bin rows will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Binning Optimization Insights -->
+                <div class="mt-6 bg-white rounded-lg shadow border">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">💡 Binning Optimization Insights</h3>
+                    </div>
+                    <div id="binning-insights" class="p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Yield Improvement Opportunities -->
+                            <div class="bg-blue-50 p-4 rounded-lg">
+                                <h4 class="font-semibold text-blue-800 mb-2">🎯 Yield Improvement Opportunities</h4>
+                                <div id="yield-opportunities" class="space-y-2">
+                                    <!-- Opportunities will be populated here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Bin Consolidation Suggestions -->
+                            <div class="bg-green-50 p-4 rounded-lg">
+                                <h4 class="font-semibold text-green-800 mb-2">🔧 Bin Consolidation Suggestions</h4>
+                                <div id="consolidation-suggestions" class="space-y-2">
+                                    <!-- Suggestions will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RISK Assessment Tab -->
+            <div id="risk-assessment-tab" class="tab-content hidden">
+                <div class="mb-6">
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">⚠️ Risk Assessment Dashboard</h1>
+                    <p class="text-gray-600">Comprehensive risk analysis and quality control monitoring</p>
+                </div>
+
+                <!-- Risk Assessment Controls -->
+                <div class="mb-6 p-4 bg-red-50 rounded-lg">
+                    <div class="flex flex-wrap gap-4 items-center">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Risk Level</label>
+                            <select id="risk-level-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="all">All Levels</option>
+                                <option value="low">Low Risk</option>
+                                <option value="medium">Medium Risk</option>
+                                <option value="high">High Risk</option>
+                                <option value="critical">Critical Risk</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Time Period</label>
+                            <select id="risk-period-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="24h">Last 24 Hours</option>
+                                <option value="7d">Last 7 Days</option>
+                                <option value="30d">Last 30 Days</option>
+                                <option value="90d">Last 90 Days</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Risk Category</label>
+                            <select id="risk-category-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="all">All Categories</option>
+                                <option value="yield">Yield Risk</option>
+                                <option value="quality">Quality Risk</option>
+                                <option value="process">Process Risk</option>
+                                <option value="equipment">Equipment Risk</option>
+                            </select>
+                        </div>
+                        <button id="refresh-risk-assessment" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm">
+                            🔄 Refresh Assessment
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Risk Overview Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-green-100 rounded-lg">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Low Risk</p>
+                                <p id="low-risk-count" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-yellow-100 rounded-lg">
+                                <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Medium Risk</p>
+                                <p id="medium-risk-count" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-orange-100 rounded-lg">
+                                <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">High Risk</p>
+                                <p id="high-risk-count" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-red-100 rounded-lg">
+                                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Critical Risk</p>
+                                <p id="critical-risk-count" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Risk Analysis Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Risk Trend Analysis -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📈 Risk Trend Analysis</h3>
+                        <div id="risk-trend-chart" class="h-64 flex items-center justify-center text-gray-500">
+                            <p>Chart will be displayed here</p>
+                        </div>
+                    </div>
+
+                    <!-- Risk Distribution -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">🎯 Risk Distribution</h3>
+                        <div id="risk-distribution-chart" class="h-64 flex items-center justify-center text-gray-500">
+                            <p>Chart will be displayed here</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Risk Details Table -->
+                <div class="bg-white rounded-lg shadow border">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">📋 Risk Assessment Details</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table id="risk-details-table" class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Risk ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Level</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Probability</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Impact</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="risk-details-tbody" class="bg-white divide-y divide-gray-200">
+                                <!-- Risk rows will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Risk Mitigation Recommendations -->
+                <div class="mt-6 bg-white rounded-lg shadow border">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">💡 Risk Mitigation Recommendations</h3>
+                    </div>
+                    <div id="risk-mitigation" class="p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Immediate Actions -->
+                            <div class="bg-red-50 p-4 rounded-lg">
+                                <h4 class="font-semibold text-red-800 mb-2">🚨 Immediate Actions Required</h4>
+                                <div id="immediate-actions" class="space-y-2">
+                                    <!-- Immediate actions will be populated here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Preventive Measures -->
+                            <div class="bg-blue-50 p-4 rounded-lg">
+                                <h4 class="font-semibold text-blue-800 mb-2">🛡️ Preventive Measures</h4>
+                                <div id="preventive-measures" class="space-y-2">
+                                    <!-- Preventive measures will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Final Test Tab -->
+            <div id="final-test-tab" class="tab-content hidden">
+                <!-- File Upload Section -->
+                <div class="mb-4">
+                    <button id="uploadBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        파일 선택 및 업로드
+                    </button>
+                    <button id="debugBtn" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded ml-2">
+                        🔍 Debug Sequences
+                    </button>
+                    <button id="debugDataBtn" class="bg-orange-500 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded ml-2">
+                        🔬 Debug Parsed Data
+                    </button>
+                </div>
+
+                <!-- File Input -->
+                <div class="mb-6">
+                    <label class="block mb-2 font-semibold">Final Test Summary 파일 업로드 (.lotSumTXT)</label>
+                    <input type="file" id="final-test-upload" accept=".lotSumTXT" multiple class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                    <p class="text-xs text-slate-500 mt-1">여러 Final Test 요약 파일을 업로드할 수 있습니다.</p>
+                </div>
+
+                <!-- Loading State -->
+                <div id="final-test-loading" class="hidden text-center py-8">
+                    <div class="loader mx-auto"></div>
+                    <p class="mt-4 text-slate-600">파일을 분석 중입니다...</p>
+                </div>
+
+                <!-- Results Section -->
+                <div id="final-test-result" class="hidden">
+                    <!-- Multi-File Summary -->
+                    <div id="multi-file-summary" class="mb-6 p-4 bg-blue-50 rounded-lg">
+                        <h2 class="text-lg font-bold mb-2 text-blue-800">📊 Multi-File Summary</h2>
+                        <div id="file-summary-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4"></div>
+                        <div id="aggregated-yield" class="bg-white p-3 rounded shadow">
+                            <h3 class="font-semibold mb-2">Aggregated Yield Analysis</h3>
+                            <div id="aggregated-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+                            <div class="mt-4 flex gap-2">
+                                <button id="export-summary" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+                                    📊 Export Summary
+                                </button>
+                                <button id="export-details" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
+                                    📋 Export Details
+                                </button>
+                                <button id="export-comparison" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm">
+                                    📈 Export Comparison
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Lot Comparison -->
+                    <div id="lot-comparison" class="mb-6 p-4 bg-green-50 rounded-lg">
+                        <h2 class="text-lg font-bold mb-2 text-green-800">📈 Lot Comparison</h2>
+                        <div id="lot-comparison-table-container" class="bg-white rounded-lg border">
+                            <div class="overflow-x-auto">
+                                <table id="lot-comparison-table" class="w-full text-sm">
+                                    <!-- Table content -->
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Selected Lot Details Section -->
+                    <div id="selected-lot-section" class="mt-6 hidden">
+                        <!-- Lot Specific Analytics -->
+                        <div class="p-4 bg-white rounded-lg border">
+                            <h2 class="text-lg font-bold mb-4 text-gray-700">🔍 Lot Specific Analytics</h2>
+                            <div id="selected-lot-details" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <!-- Lot Info, Summary, Retest Flow, etc. will be injected here -->
+                                <div id="selected-lot-info" class="p-3 bg-gray-50 rounded"></div>
+                                <div id="selected-lot-summary" class="p-3 bg-gray-50 rounded"></div>
+                                <div id="selected-lot-retest-flow" class="p-3 bg-gray-50 rounded col-span-1 md:col-span-2"></div>
+                                <div id="selected-lot-quality" class="p-3 bg-gray-50 rounded"></div>
+                                <div id="selected-lot-failure-analysis" class="p-3 bg-gray-50 rounded col-span-full"></div>
+                            </div>
+                        </div>
+
+                        <!-- Lot Hard Bin Sorting Table -->
+                        <div id="hard-bin-table-container" class="mt-6">
+                            <div class="bg-white rounded-lg shadow border">
+                                <div class="p-6 border-b">
+                                    <h3 class="text-lg font-semibold text-gray-800">📊 Hard Bin Sorting Table</h3>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table id="hard-bin-table" class="w-full">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bin Code</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Count</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Percentage</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="hard-bin-tbody" class="bg-white divide-y divide-gray-200">
+                                            <!-- Hard bin data will be populated here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Detailed Test Results by Site -->
+                        <div class="mt-6">
+                            <h2 class="text-lg font-bold mb-2 text-gray-700">📋 Test 결과 상세 (Site별)</h2>
+                            <div id="test-stage-tabs" class="border-b border-gray-200 mb-2 flex space-x-4">
+                                <!-- Test stage tabs will be injected here -->
+                            </div>
+                            <div id="test-results-container">
+                                <!-- Test results tables will be injected here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Aggregated Enhanced Analytics -->
+                    <div id="enhanced-analytics" class="mt-6 mb-6 p-4 bg-purple-50 rounded-lg">
+                        <h2 class="text-lg font-bold mb-2 text-purple-800">🔬 Aggregated Enhanced Analytics</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div class="bg-white p-4 rounded shadow">
+                                <h3 class="font-semibold mb-2 text-purple-700">📈 Yield Trend Analysis</h3>
+                                <div id="trend-content"></div>
+                            </div>
+                            <div class="bg-white p-4 rounded shadow">
+                                <h3 class="font-semibold mb-2 text-purple-700">🎯 Failure Pattern Analysis</h3>
+                                <div id="pattern-content"></div>
+                            </div>
+                            <div class="bg-white p-4 rounded shadow">
+                                <h3 class="font-semibold mb-2 text-purple-700">🏭 Site Performance</h3>
+                                <div id="site-content"></div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-white p-4 rounded shadow">
+                                <h3 class="font-semibold mb-2 text-purple-700">🔗 Failure Correlation Analysis</h3>
+                                <div id="correlation-content"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Debug Information -->
+                <div id="debug-info" class="mt-4 p-4 bg-gray-100 rounded text-xs hidden">
+                    <h3 class="font-semibold mb-2">Debug Information:</h3>
+                    <pre id="debug-content"></pre>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- JavaScript Modules -->
+    
+<script>
+
+// ===== FileUtils.js =====
+/**
+ * File Utilities
+ * Handles file extension detection, filename parsing, and file validation
+ * Version: 1.0
+ * Created: 2025-01-27
+ */
+
+class FileUtils {
+    /**
+     * Get file extension from filename
+     * @param {string} fileName - File name
+     * @returns {string} File extension
+     */
+    static getFileExtension(fileName) {
+        if (!fileName || typeof fileName !== 'string') {
+            return '';
+        }
+
+        const lastDotIndex = fileName.lastIndexOf('.');
+        if (lastDotIndex === -1) {
+            return '';
+        }
+
+        const extension = fileName.substring(lastDotIndex).toLowerCase();
+        
+        // Handle double extensions like .stdf.gz
+        if (extension === '.gz') {
+            const secondLastDotIndex = fileName.lastIndexOf('.', lastDotIndex - 1);
+            if (secondLastDotIndex !== -1) {
+                const doubleExtension = fileName.substring(secondLastDotIndex).toLowerCase();
+                return doubleExtension;
+            }
+        }
+
+        return extension;
+    }
+
+    /**
+     * Normalize file extension
+     * @param {string} extension - File extension
+     * @returns {string} Normalized extension
+     */
+    static normalizeExtension(extension) {
+        if (!extension) return '';
+        
+        const normalizedExtension = extension.toLowerCase();
+        
+        // Extension mapping for common variations
+        const extensionMap = {
+            '.lotsumtxt': '.lotSumTXT',
+            '.stdf.gz': '.stdf.gz',
+            '.stdf': '.stdf'
+        };
+        
+        return extensionMap[normalizedExtension] || normalizedExtension;
+    }
+
+    /**
+     * Extract lot number from filename or file content
+     * @param {string} fileName - File name
+     * @param {string} fileContent - File content (optional)
+     * @returns {string} Lot number or null
+     */
+    static extractLotNumberFromFileName(fileName, fileContent = null) {
+        if (!fileName || typeof fileName !== 'string') {
+            return null;
+        }
+
+        // First, try to extract from file content if available
+        if (fileContent && typeof fileContent === 'string') {
+            const contentMatch = fileContent.match(/Lot_number\s*:\s*([A-Z0-9\-]+(?:-[A-Z0-9]+)*)/);
+            if (contentMatch && contentMatch[1]) {
+                return contentMatch[1];
+            }
+        }
+
+        // Try multiple patterns for lot number extraction from filename
+        const patterns = [
+            // Pattern for files like: FT_MCSLOGIC_GAPM9000-E-01S13_P1_20250530_210044.lotSumTXT
+            /FT_MCSLOGIC_([A-Z0-9\-]+(?:-[A-Z0-9]+)*)_[PR]\d+_/,
+            // Pattern for files like: FT_MCSLOGIC_S95WR000C-09_R1_20250521_120733.lotSumTXT
+            /FT_MCSLOGIC_([A-Z0-9]+(?:[A-Z0-9\-]+)*)_[PR]\d+_/,
+            // Pattern for files like: FT_MCSLOGIC_S95WSA00D-03_P1_20250522_033348.lotSumTXT
+            /FT_MCSLOGIC_([A-Z0-9]+(?:[A-Z0-9\-]+)*)_[PR]\d+_/,
+            // Generic pattern without FT_MCSLOGIC prefix
+            /([A-Z0-9\-]+(?:-[A-Z0-9]+)*)_[PR]\d+_/,
+            // Pattern with dot instead of underscore
+            /([A-Z0-9\-]+(?:-[A-Z0-9]+)*)_[PR]\d+\./,
+            // Minimal pattern
+            /([A-Z0-9\-]+(?:-[A-Z0-9]+)*)_[PR]\d/
+        ];
+        
+        for (const pattern of patterns) {
+            const match = fileName.match(pattern);
+            if (match && match[1]) {
+                return match[1];
+            }
+        }
+        
+        // If no lot number found, create a unique identifier from filename
+        return this.createUniqueIdentifier(fileName);
+    }
+
+    /**
+     * Create unique identifier from filename when lot number is not found
+     * @param {string} fileName - File name
+     * @returns {string} Unique identifier
+     */
+    static createUniqueIdentifier(fileName) {
+        // Remove extension and create hash-like identifier
+        const nameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+        const testType = this.extractTestType(fileName);
+        
+        // Create unique identifier: filename_hash + testType
+        const hash = this.simpleHash(nameWithoutExt);
+        return `${nameWithoutExt}_${testType}_${hash}`;
+    }
+
+    /**
+     * Simple hash function for creating unique identifiers
+     * @param {string} str - String to hash
+     * @returns {string} Hash string
+     */
+    static simpleHash(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32-bit integer
+        }
+        return Math.abs(hash).toString(36).substring(0, 6);
+    }
+
+    /**
+     * Extract test type from filename
+     * @param {string} fileName - File name
+     * @returns {string} Test type (P1, R1, R2, etc.) or 'Unknown'
+     */
+    static extractTestType(fileName) {
+        if (!fileName || typeof fileName !== 'string') {
+            return 'Unknown';
+        }
+
+        // Try multiple patterns for test type extraction
+        const patterns = [
+            /_([PR]\d+)_/,  // Standard pattern: _P1_, _R1_, etc.
+            /_([PR]\d+)\./, // Pattern with dot: _P1., _R1., etc.
+            /([PR]\d+)_/,   // Pattern without leading underscore: P1_, R1_, etc.
+            /([PR]\d+)\./   // Pattern without leading underscore and with dot: P1., R1., etc.
+        ];
+        
+        for (const pattern of patterns) {
+            const match = fileName.match(pattern);
+            if (match && match[1]) {
+                return match[1];
+            }
+        }
+        
+        return 'Unknown';
+    }
+
+    /**
+     * Compare test sequence order
+     * @param {string} a - First test type
+     * @param {string} b - Second test type
+     * @returns {number} Comparison result
+     */
+    static compareTestSequence(a, b) {
+        const getOrder = (type) => {
+            if (type.startsWith('P')) return 0; // Primary test first
+            const num = parseInt(type.substring(1));
+            return num; // R1=1, R2=2, etc.
+        };
+        
+        return getOrder(a) - getOrder(b);
+    }
+
+    /**
+     * Validate file type
+     * @param {string} fileName - File name
+     * @param {Array} supportedFormats - Array of supported formats
+     * @returns {boolean} True if file type is supported
+     */
+    static validateFileType(fileName, supportedFormats) {
+        const extension = this.getFileExtension(fileName);
+        return supportedFormats.includes(extension);
+    }
+
+    /**
+     * Parse date time string
+     * @param {string} dateTimeStr - Date time string (YYYYMMDDHHMM)
+     * @returns {string} Formatted date time
+     */
+    static parseDateTime(dateTimeStr) {
+        if (!dateTimeStr || dateTimeStr.length !== 12) return dateTimeStr;
+        
+        const year = dateTimeStr.substring(0, 4);
+        const month = dateTimeStr.substring(4, 6);
+        const day = dateTimeStr.substring(6, 8);
+        const hour = dateTimeStr.substring(8, 10);
+        const minute = dateTimeStr.substring(10, 12);
+        
+        return `${year}-${month}-${day} ${hour}:${minute}`;
+    }
+} 
+
+// ===== CalculationUtils.js =====
+/**
+ * Calculation Utilities
+ * Handles yield calculations, pass/fail counts, and quality metrics
+ * Version: 1.0
+ * Created: 2025-01-27
+ */
+
+class CalculationUtils {
+    /**
+     * Calculate pass count from test data
+     * @param {Object} data - Test data
+     * @param {string} testType - Test type (P1, R1, R2, etc.)
+     * @param {number} actualInput - Actual input count for this test
+     * @returns {number} Pass count
+     */
+    static calculatePassCount(data, testType = 'Unknown', actualInput = null) {
+        console.log('=== calculatePassCount Debug ===');
+        console.log('Test type:', testType);
+        console.log('Actual input:', actualInput);
+        console.log('Data summary:', data.summary);
+        console.log('Data analytics:', data.analytics);
+        
+        // First priority: use summary.goodCount if available
+        if (data.summary && data.summary.goodCount !== undefined && data.summary.goodCount !== null) {
+            console.log('Using summary.goodCount:', data.summary.goodCount);
+            return data.summary.goodCount;
+        }
+        
+        // Second priority: use summary.yieldPercent to calculate
+        if (data.summary && data.summary.yieldPercent !== undefined && data.summary.yieldPercent !== null) {
+            const totalDevices = actualInput || data.lotInfo?.Lot_Size || 0;
+            const calculatedPass = Math.round((data.summary.yieldPercent / 100) * totalDevices);
+            console.log('Using summary.yieldPercent calculation:');
+            console.log('  Total devices:', totalDevices);
+            console.log('  Yield percent:', data.summary.yieldPercent);
+            console.log('  Calculated pass:', calculatedPass);
+            return calculatedPass;
+        }
+        
+        // Third priority: use analytics.yieldAnalysis
+        if (data.analytics && data.analytics.yieldAnalysis) {
+            const totalDevices = actualInput || data.analytics.yieldAnalysis.totalDevices || data.lotInfo?.Lot_Size || 0;
+            const yieldPercent = data.analytics.yieldAnalysis.overallYield || 0;
+            const calculatedPass = Math.round((yieldPercent / 100) * totalDevices);
+            console.log('Using analytics calculation:');
+            console.log('  Total devices (adjusted):', totalDevices);
+            console.log('  Yield percent:', yieldPercent);
+            console.log('  Calculated pass:', calculatedPass);
+            return calculatedPass;
+        }
+        
+        // Fourth priority: use lot size as fallback (assuming 100% yield if no data)
+        if (data.lotInfo && data.lotInfo.Lot_Size) {
+            console.log('Using lot size as fallback (assuming 100% yield):', data.lotInfo.Lot_Size);
+            return data.lotInfo.Lot_Size;
+        }
+        
+        console.log('No pass count data found, returning 0');
+        return 0;
+    }
+
+    /**
+     * Calculate fail count from test data
+     * @param {Object} data - Test data
+     * @param {string} testType - Test type (P1, R1, R2, etc.)
+     * @param {number} actualInput - Actual input count for this test
+     * @returns {number} Fail count
+     */
+    static calculateFailCount(data, testType = 'Unknown', actualInput = null) {
+        console.log('=== calculateFailCount Debug ===');
+        console.log('Test type:', testType);
+        console.log('Actual input:', actualInput);
+        console.log('Data summary:', data.summary);
+        console.log('Data analytics:', data.analytics);
+        
+        // First priority: use summary.failCount if available
+        if (data.summary && data.summary.failCount !== undefined && data.summary.failCount !== null) {
+            console.log('Using summary.failCount:', data.summary.failCount);
+            return data.summary.failCount;
+        }
+        
+        // Second priority: calculate from good count and total
+        if (data.summary && data.summary.goodCount !== undefined && data.summary.goodCount !== null) {
+            const totalDevices = actualInput || data.lotInfo?.Lot_Size || 0;
+            const calculatedFail = totalDevices - data.summary.goodCount;
+            console.log('Calculating fail from good count:');
+            console.log('  Total devices:', totalDevices);
+            console.log('  Good count:', data.summary.goodCount);
+            console.log('  Calculated fail:', calculatedFail);
+            return Math.max(0, calculatedFail); // Ensure non-negative
+        }
+        
+        // Third priority: use summary.yieldPercent to calculate
+        if (data.summary && data.summary.yieldPercent !== undefined && data.summary.yieldPercent !== null) {
+            const totalDevices = actualInput || data.lotInfo?.Lot_Size || 0;
+            const failRate = 100 - data.summary.yieldPercent;
+            const calculatedFail = Math.round((failRate / 100) * totalDevices);
+            console.log('Using summary.yieldPercent calculation:');
+            console.log('  Total devices:', totalDevices);
+            console.log('  Fail rate:', failRate);
+            console.log('  Calculated fail:', calculatedFail);
+            return calculatedFail;
+        }
+        
+        // Fourth priority: use analytics.yieldAnalysis
+        if (data.analytics && data.analytics.yieldAnalysis) {
+            const totalDevices = actualInput || data.analytics.yieldAnalysis.totalDevices || data.lotInfo?.Lot_Size || 0;
+            const failRate = data.analytics.yieldAnalysis.failRate || 0;
+            const calculatedFail = Math.round((failRate / 100) * totalDevices);
+            console.log('Using analytics calculation:');
+            console.log('  Total devices (adjusted):', totalDevices);
+            console.log('  Fail rate:', failRate);
+            console.log('  Calculated fail:', calculatedFail);
+            return calculatedFail;
+        }
+        
+        // Fifth priority: assume 0 fail if no data available
+        console.log('No fail count data found, returning 0');
+        return 0;
+    }
+
+    /**
+     * Calculate yield from test data
+     * @param {Object} data - Test data
+     * @returns {number} Yield percentage
+     */
+    static calculateYield(data) {
+        console.log('=== calculateYield Debug ===');
+        console.log('Data summary:', data.summary);
+        console.log('Data analytics:', data.analytics);
+        
+        // First priority: use summary.goodPercentage if available
+        if (data.summary && data.summary.goodPercentage !== undefined && data.summary.goodPercentage !== null) {
+            console.log('Using summary.goodPercentage:', data.summary.goodPercentage);
+            return data.summary.goodPercentage;
+        }
+        
+        // Second priority: use summary.yieldPercent if available
+        if (data.summary && data.summary.yieldPercent !== undefined && data.summary.yieldPercent !== null) {
+            console.log('Using summary.yieldPercent:', data.summary.yieldPercent);
+            return data.summary.yieldPercent;
+        }
+        
+        // Third priority: calculate from good count and total count
+        if (data.summary && data.summary.goodCount !== undefined && data.summary.goodCount !== null && 
+            data.summary.totalCount !== undefined && data.summary.totalCount !== null && data.summary.totalCount > 0) {
+            const calculatedYield = (data.summary.goodCount / data.summary.totalCount) * 100;
+            console.log('Calculating yield from good/total counts:', calculatedYield);
+            return calculatedYield;
+        }
+        
+        // Fourth priority: use analytics.yieldAnalysis
+        if (data.analytics && data.analytics.yieldAnalysis && data.analytics.yieldAnalysis.overallYield !== undefined) {
+            console.log('Using analytics.yieldAnalysis.overallYield:', data.analytics.yieldAnalysis.overallYield);
+            return data.analytics.yieldAnalysis.overallYield;
+        }
+        
+        // Fifth priority: assume 100% yield if no data available
+        console.log('No yield data found, assuming 100%');
+        return 100;
+    }
+
+    /**
+     * Calculate final yield for a test sequence
+     * @param {Object} sequence - Test sequence object
+     */
+    static calculateSequenceYield(sequence) {
+        if (sequence.tests.length === 0) return;
+        
+        console.log('=== calculateSequenceYield Debug ===');
+        console.log('Sequence lot:', sequence.lotNumber);
+        console.log('Number of tests:', sequence.tests.length);
+        
+        // Get the initial lot size from the first test (usually P1)
+        const initialTest = sequence.tests.find(t => t.testType.startsWith('P')) || sequence.tests[0];
+        const initialLotSize = Math.max(0, initialTest.inputCount || 0);
+        
+        console.log('Initial test:', initialTest.testType);
+        console.log('Initial lot size:', initialLotSize);
+        
+        // Calculate total pass across all tests with validation
+        let totalPass = 0;
+        sequence.tests.forEach(test => {
+            const validPassCount = Math.max(0, test.passCount || 0);
+            totalPass += validPassCount;
+        });
+        
+        // Final fail count is from the last test with validation
+        const lastTest = sequence.tests[sequence.tests.length - 1];
+        const finalFail = Math.max(0, lastTest.failCount || 0);
+        
+        console.log('Individual test values:');
+        sequence.tests.forEach((test, index) => {
+            const validInput = Math.max(0, test.inputCount || 0);
+            const validPass = Math.max(0, test.passCount || 0);
+            const validFail = Math.max(0, test.failCount || 0);
+            const validYield = Math.max(0, Math.min(100, test.yield || 0));
+            console.log(`  ${test.testType}: Input=${validInput}, Pass=${validPass}, Fail=${validFail}, Yield=${validYield.toFixed(2)}%`);
+        });
+        
+        console.log('Final calculation:');
+        console.log('  Total Pass:', totalPass);
+        console.log('  Final Fail:', finalFail);
+        console.log('  Initial Lot Size:', initialLotSize);
+        
+        // Calculate final yield with validation
+        let finalYield = 0;
+        if (initialLotSize > 0) {
+            // Ensure final fail doesn't exceed initial lot size
+            const validFinalFail = Math.min(finalFail, initialLotSize);
+            finalYield = ((initialLotSize - validFinalFail) / initialLotSize) * 100;
+            finalYield = Math.max(0, Math.min(100, finalYield)); // Ensure 0-100% range
+        }
+        
+        // Ensure total pass doesn't exceed initial lot size
+        const validTotalPass = Math.min(totalPass, initialLotSize);
+        const validTotalFail = Math.min(finalFail, initialLotSize);
+        
+        sequence.totalInput = initialLotSize;
+        sequence.totalPass = validTotalPass;
+        sequence.totalFail = validTotalFail;
+        sequence.finalYield = finalYield;
+        
+        console.log(`Sequence summary: Initial=${initialLotSize}, Total Pass=${validTotalPass}, Final Fail=${validTotalFail}, Final Yield=${finalYield.toFixed(2)}%`);
+    }
+
+    /**
+     * Calculate sigma level from defect rate
+     * @param {number} defectRate - Defect rate percentage
+     * @returns {number} Sigma level
+     */
+    static calculateSigmaLevel(defectRate) {
+        // Convert percentage to decimal
+        const defectRateDecimal = defectRate / 100;
+        
+        // Simple sigma level calculation
+        // This is a simplified version - in practice, you'd use more complex statistical methods
+        if (defectRateDecimal <= 0.0000034) return 6.0; // 3.4 DPMO
+        if (defectRateDecimal <= 0.000233) return 5.0;  // 233 DPMO
+        if (defectRateDecimal <= 0.00621) return 4.0;   // 6,210 DPMO
+        if (defectRateDecimal <= 0.0668) return 3.0;    // 66,800 DPMO
+        if (defectRateDecimal <= 0.3085) return 2.0;    // 308,500 DPMO
+        if (defectRateDecimal <= 0.6915) return 1.0;    // 691,500 DPMO
+        
+        return 0.0; // Below 1 sigma
+    }
+
+    /**
+     * Calculate Cpk (Process Capability Index)
+     * @param {number} yieldPercent - Yield percentage
+     * @returns {number} Cpk value
+     */
+    static calculateCpk(yieldPercent) {
+        // Simplified Cpk calculation based on yield
+        // In practice, you'd need more detailed process data
+        const defectRate = 100 - yieldPercent;
+        const sigmaLevel = this.calculateSigmaLevel(defectRate);
+        
+        // Cpk is approximately sigma/3
+        return sigmaLevel / 3;
+    }
+
+    /**
+     * Calculate quality score (0-100)
+     * @param {number} yieldPercent - Yield percentage
+     * @param {number} failureCount - Number of failures
+     * @param {number} totalDevices - Total number of devices
+     * @returns {number} Quality score
+     */
+    static calculateQualityScore(yieldPercent, failureCount, totalDevices) {
+        // Base score from yield (70% weight)
+        const yieldScore = (yieldPercent / 100) * 70;
+        
+        // Penalty for failure rate (30% weight)
+        const failureRate = totalDevices > 0 ? (failureCount / totalDevices) * 100 : 0;
+        const failurePenalty = Math.min(failureRate * 0.3, 30);
+        
+        return Math.max(0, Math.min(100, yieldScore - failurePenalty));
+    }
+} 
+
+// ===== Analytics.js =====
+/**
+ * Analytics Module
+ * Handles all analytics calculations and aggregations
+ * Version: 1.0
+ * Created: 2025-01-27
+ */
+
+
+
+class Analytics {
+    /**
+     * Aggregate analytics for a test sequence
+     * @param {Object} sequence - The test sequence object
+     * @returns {Object} Aggregated analytics data
+     */
+    static aggregateSequenceAnalytics(sequence) {
+        if (!sequence || !sequence.tests || sequence.tests.length === 0) {
+            return {};
+        }
+
+        const combinedTestResults = [];
+
+        // Combine test results from all tests in the sequence
+        sequence.tests.forEach(test => {
+            if (test.data && Array.isArray(test.data.testResults)) {
+                test.data.testResults.forEach(result => {
+                    if (!result || typeof result !== 'object' || result.description === 'PASS' || result.description === 'FAIL') return;
+                    
+                    const existingResult = combinedTestResults.find(r => r.description === result.description);
+                    if (existingResult) {
+                        existingResult.total += result.total || 0;
+                        if (result.sites && typeof result.sites === 'object') {
+                            Object.keys(result.sites).forEach(site => {
+                                existingResult.sites[site] = (existingResult.sites[site] || 0) + (result.sites[site] || 0);
+                            });
+                        }
+                    } else {
+                        combinedTestResults.push(JSON.parse(JSON.stringify(result)));
+                    }
+                });
+            }
+        });
+
+        const lotInfo = sequence.tests[0].data.lotInfo;
+        const summary = {
+            goodCount: sequence.totalPass,
+            failCount: sequence.totalFail,
+            yieldPercent: sequence.finalYield
+        };
+
+        // Generate analytics object
+        const aggregatedAnalytics = this.calculateAnalytics(combinedTestResults, summary, lotInfo);
+
+        // Add re-test flow info
+        if (sequence.tests.length === 1) {
+            // Single test file - no re-test flow
+            aggregatedAnalytics.reTestFlow = {
+                initialLotSize: sequence.totalInput,
+                finalYield: sequence.finalYield,
+                totalPass: sequence.totalPass,
+                finalFail: sequence.totalFail,
+                testSequence: 'Single Test (P1)',
+                isSingleTest: true
+            };
+        } else {
+            // Multiple test sequence
+            aggregatedAnalytics.reTestFlow = {
+                initialLotSize: sequence.totalInput,
+                finalYield: sequence.finalYield,
+                totalPass: sequence.totalPass,
+                finalFail: sequence.totalFail,
+                testSequence: sequence.tests.map(t => t.testType).join(' → '),
+                isSingleTest: false
+            };
+        }
+
+        return aggregatedAnalytics;
+    }
+
+    /**
+     * Get aggregated analytics with re-test flow consideration
+     * @param {Array} allFiles - Array of processed files
+     * @returns {Object} Aggregated analytics
+     */
+    static getAggregatedAnalytics(allFiles) {
+        console.log('=== Starting Aggregated Analytics Calculation ===');
+        
+        const result = {
+            totalFiles: allFiles.length,
+            totalGood: 0,
+            totalFail: 0,
+            overallYield: 0,
+            testSequences: {},
+            enhancedAnalytics: {}
+        };
+
+        // Detect test sequences
+        const sequences = this.detectTestSequences(allFiles);
+        result.testSequences = sequences;
+
+        // Calculate aggregated statistics from sequences
+        let totalInitialInput = 0;
+        let totalFinalPass = 0;
+        let totalFinalFail = 0;
+        const yieldData = [];
+
+        console.log('=== Sequence Analysis ===');
+        Object.entries(sequences).forEach(([lotNumber, sequence]) => {
+            console.log(`Lot ${lotNumber}:`);
+            console.log(`  - Total Input: ${sequence.totalInput}`);
+            console.log(`  - Total Pass: ${sequence.totalPass}`);
+            console.log(`  - Total Fail: ${sequence.totalFail}`);
+            console.log(`  - Final Yield: ${sequence.finalYield}%`);
+            
+            totalInitialInput += sequence.totalInput || 0;
+            totalFinalPass += sequence.totalPass || 0;
+            totalFinalFail += sequence.totalFail || 0;
+            yieldData.push(sequence.finalYield || 0);
+        });
+
+        // Set final aggregated values
+        result.totalGood = totalFinalPass;
+        result.totalFail = totalFinalFail;
+        
+        // Calculate overall yield correctly: (Total Pass / Total Input) × 100
+        const totalInput = totalFinalPass + totalFinalFail;
+        result.overallYield = totalInput > 0 ? 
+            Math.max(0, Math.min(100, (totalFinalPass / totalInput) * 100)) : 0;
+
+        console.log('=== Final Aggregation ===');
+        console.log(`Total Initial Input: ${totalInitialInput}`);
+        console.log(`Total Final Pass: ${totalFinalPass}`);
+        console.log(`Total Final Fail: ${totalFinalFail}`);
+        console.log(`Overall Yield: ${result.overallYield}%`);
+
+        // Calculate yield range and average
+        if (yieldData.length > 0) {
+            result.yieldRange = {
+                min: Math.max(0, Math.min(...yieldData)),
+                max: Math.min(100, Math.max(...yieldData))
+            };
+            result.averageYield = yieldData.reduce((sum, yieldValue) => sum + yieldValue, 0) / yieldData.length;
+        }
+
+        // Enhanced analytics
+        result.enhancedAnalytics = this.calculateEnhancedAnalytics(sequences, allFiles);
+
+        console.log(`Aggregation complete: Yield=${result.overallYield.toFixed(2)}%, Good=${result.totalGood}, Fail=${result.totalFail}`);
+        return result;
+    }
+
+    /**
+     * Detect test sequences from files
+     * @param {Array} files - Array of processed files
+     * @returns {Object} Test sequences
+     */
+    static detectTestSequences(files) {
+        const sequences = {};
+        
+        console.log('=== Test Sequence Detection Debug ===');
+        console.log('Processing files:', files.length);
+        
+        files.forEach((file, fileIndex) => {
+            if (file.success && file.data) {
+                // Use the lotNumber field that was set in STDFFileHandler
+                let lotNumber = file.data.lotNumber || 
+                               file.data.lotInfo?.Lot_number || 
+                               file.data.lotInfo?.Lot_ID || 
+                               file.data.lotInfo?.LotNumber;
+                
+                // If no lot number found, use filename-based identifier
+                if (!lotNumber) {
+                    lotNumber = FileUtils.extractLotNumberFromFileName(file.fileName);
+                }
+                
+                // If still no lot number, create unique identifier
+                if (!lotNumber) {
+                    lotNumber = `file_${fileIndex}_${file.fileName.replace(/\.[^/.]+$/, '')}`;
+                }
+                
+                const fileName = file.fileName;
+                
+                // Extract test type from filename
+                let testType = 'P1'; // Default
+                if (fileName.includes('_P1_')) testType = 'P1';
+                else if (fileName.includes('_R1_')) testType = 'R1';
+                else if (fileName.includes('_R2_')) testType = 'R2';
+                else if (fileName.includes('_R3_')) testType = 'R3';
+                
+                console.log(`File ${fileIndex + 1}: ${fileName} -> Lot: ${lotNumber}, Test: ${testType}`);
+                
+                if (!sequences[lotNumber]) {
+                    sequences[lotNumber] = {
+                        lotNumber: lotNumber,
+                        device: file.data.deviceName || file.data.lotInfo?.Device_name || 'Unknown',
+                        tests: [],
+                        finalYield: 0,
+                        totalInput: 0,
+                        totalPass: 0,
+                        totalFail: 0
+                    };
+                }
+                
+                // Calculate pass/fail counts from summary data
+                const inputCount = file.data.lotInfo.Lot_Size || 0;
+                const passCount = file.data.summary?.goodCount || 0;
+                const failCount = file.data.summary?.failCount || 0;
+                const yieldPercent = file.data.summary?.goodPercentage || 0;
+                
+                // Add test with unique identifier to prevent duplicates
+                const testId = `${testType}_${fileIndex}`;
+                const existingTest = sequences[lotNumber].tests.find(t => t.testId === testId);
+                
+                if (!existingTest) {
+                    sequences[lotNumber].tests.push({
+                        testId: testId,
+                        testType: testType,
+                        fileName: fileName,
+                        data: file.data,
+                        inputCount: inputCount,
+                        passCount: passCount,
+                        failCount: failCount,
+                        yield: yieldPercent
+                    });
+                } else {
+                    console.log(`Skipping duplicate test: ${testId}`);
+                }
+            }
+        });
+        
+        // Process each sequence
+        Object.values(sequences).forEach(sequence => {
+            // Sort tests by type (P1, R1, R2, R3) and then by file index
+            sequence.tests.sort((a, b) => {
+                const order = { 'P1': 1, 'R1': 2, 'R2': 3, 'R3': 4 };
+                const typeOrder = (order[a.testType] || 999) - (order[b.testType] || 999);
+                if (typeOrder !== 0) return typeOrder;
+                
+                // If same type, sort by file index
+                const aIndex = parseInt(a.testId.split('_')[1]);
+                const bIndex = parseInt(a.testId.split('_')[1]);
+                return aIndex - bIndex;
+            });
+            
+            // Remove duplicate test types to create cleaner sequence
+            const uniqueTests = [];
+            const seenTypes = new Set();
+            
+            sequence.tests.forEach(test => {
+                if (!seenTypes.has(test.testType)) {
+                    seenTypes.add(test.testType);
+                    uniqueTests.push(test);
+                }
+            });
+            
+            // Replace tests array with unique tests
+            sequence.tests = uniqueTests;
+            
+            // Calculate sequence yield
+            CalculationUtils.calculateSequenceYield(sequence);
+            sequence.analytics = this.aggregateSequenceAnalytics(sequence);
+        });
+        
+        return sequences;
+    }
+
+    /**
+     * Calculate enhanced analytics
+     * @param {Object} sequences - Test sequences
+     * @param {Array} allFiles - All processed files
+     * @returns {Object} Enhanced analytics
+     */
+    static calculateEnhancedAnalytics(sequences, allFiles) {
+        const enhancedAnalytics = {};
+
+        // Yield trend analysis
+        if (Object.keys(sequences).length > 1) {
+            const yields = Object.values(sequences).map(s => s.finalYield);
+            enhancedAnalytics.yieldTrend = {
+                average: yields.reduce((sum, y) => sum + y, 0) / yields.length,
+                range: `${Math.min(...yields).toFixed(1)}% - ${Math.max(...yields).toFixed(1)}%`,
+                trend: this.analyzeYieldTrend(yields),
+                variation: Math.max(...yields) - Math.min(...yields)
+            };
+        }
+
+        // Failure pattern analysis
+        const allFailures = [];
+        Object.values(sequences).forEach(sequence => {
+            if (sequence.analytics && sequence.analytics.testResults) {
+                allFailures.push(...sequence.analytics.testResults.filter(t => t.result === 'FAIL'));
+            }
+        });
+
+        if (allFailures.length > 0) {
+            enhancedAnalytics.failurePatterns = {
+                topPatterns: allFailures
+                    .sort((a, b) => b.total - a.total)
+                    .slice(0, 5)
+                    .map(f => ({ pattern: f.description, count: f.total }))
+            };
+        }
+
+        // Site performance analysis
+        const sitePerformance = {};
+        Object.values(sequences).forEach(sequence => {
+            if (sequence.analytics && sequence.analytics.sitePerformance) {
+                Object.entries(sequence.analytics.sitePerformance).forEach(([site, data]) => {
+                    if (!sitePerformance[site]) {
+                        sitePerformance[site] = { total: 0 };
+                    }
+                    sitePerformance[site].total += data.total || 0;
+                });
+            }
+        });
+
+        if (Object.keys(sitePerformance).length > 0) {
+            enhancedAnalytics.sitePerformance = {
+                distribution: sitePerformance
+            };
+        }
+
+        return enhancedAnalytics;
+    }
+
+    /**
+     * Analyze yield trend
+     * @param {Array} yields - Array of yield percentages
+     * @returns {string} Trend description
+     */
+    static analyzeYieldTrend(yields) {
+        if (yields.length < 2) return 'Insufficient data';
+        
+        const sortedYields = [...yields].sort((a, b) => a - b);
+        const firstHalf = sortedYields.slice(0, Math.floor(sortedYields.length / 2));
+        const secondHalf = sortedYields.slice(Math.floor(sortedYields.length / 2));
+        
+        const firstAvg = firstHalf.reduce((sum, y) => sum + y, 0) / firstHalf.length;
+        const secondAvg = secondHalf.reduce((sum, y) => sum + y, 0) / secondHalf.length;
+        
+        if (secondAvg > firstAvg + 2) return 'Improving';
+        if (secondAvg < firstAvg - 2) return 'Declining';
+        return 'Stable';
+    }
+
+    /**
+     * Calculate analytics for test results
+     * @param {Array} testResults - Test results array
+     * @param {Object} summary - Summary data
+     * @param {Object} lotInfo - Lot information
+     * @returns {Object} Analytics data
+     */
+    static calculateAnalytics(testResults, summary, lotInfo) {
+        const totalDevices = lotInfo.Lot_Size || 0;
+        const failures = testResults.filter(t => t.result === 'FAIL');
+        const failureCount = failures.length;
+
+        const yieldAnalysis = {
+            overallYield: summary.yieldPercent || 0,
+            totalDevices: totalDevices,
+            failRate: totalDevices > 0 ? (failureCount / totalDevices) * 100 : 0
+        };
+
+        const failureAnalysis = {
+            failures: failures,
+            failureCount: failureCount,
+            failureRate: yieldAnalysis.failRate
+        };
+
+        const rootCause = this.performRootCauseAnalysis(failures, lotInfo);
+        const qualityMetrics = this.calculateQualityMetrics(summary.yieldPercent, failureCount, totalDevices);
+
+        // Site performance calculation
+        const sitePerformance = {};
+        testResults.forEach(test => {
+            if (test.sites) {
+                Object.entries(test.sites).forEach(([siteNum, count]) => {
+                    const siteKey = `Site${siteNum}`;
+                    if (!sitePerformance[siteKey]) {
+                        sitePerformance[siteKey] = { total: 0, status: 'Unknown' };
+                    }
+                    sitePerformance[siteKey].total += count;
+                });
+            }
+        });
+
+        return {
+            testResults: testResults,
+            yieldAnalysis,
+            failureAnalysis,
+            sitePerformance,
+            rootCause,
+            qualityMetrics
+        };
+    }
+
+    /**
+     * Perform root cause analysis
+     * @param {Array} failures - Failure array
+     * @param {Object} lotInfo - Lot information
+     * @returns {Object} Root cause analysis
+     */
+    static performRootCauseAnalysis(failures, lotInfo) {
+        const analysis = {
+            potentialCauses: [],
+            recommendations: []
+        };
+        
+        // Analyze failure types
+        const usbFailures = failures.filter(f => f.description.toLowerCase().includes('usb'));
+        const voltageFailures = failures.filter(f => f.description.toLowerCase().includes('voltage') || f.description.toLowerCase().includes('voh'));
+        const functionFailures = failures.filter(f => f.description.toLowerCase().includes('function'));
+        
+        if (usbFailures.length > 0) {
+            analysis.potentialCauses.push('USB interface issues');
+            analysis.recommendations.push('Check USB connection and driver compatibility');
+        }
+        
+        if (voltageFailures.length > 0) {
+            analysis.potentialCauses.push('Voltage regulation problems');
+            analysis.recommendations.push('Verify power supply stability and voltage levels');
+        }
+        
+        if (functionFailures.length > 0) {
+            analysis.potentialCauses.push('Functional test failures');
+            analysis.recommendations.push('Review test conditions and device specifications');
+        }
+        
+        // Default recommendations if no specific patterns found
+        if (analysis.potentialCauses.length === 0) {
+            analysis.potentialCauses.push('General test environment issues');
+            analysis.recommendations.push('Review test setup and environmental conditions');
+        }
+        
+        return analysis;
+    }
+
+    /**
+     * Calculate quality metrics
+     * @param {number} yieldPercent - Yield percentage
+     * @param {number} failureCount - Failure count
+     * @param {number} totalDevices - Total devices
+     * @returns {Object} Quality metrics
+     */
+    static calculateQualityMetrics(yieldPercent, failureCount, totalDevices) {
+        const defectRate = (100 - yieldPercent) / 100;
+        
+        return {
+            sigmaLevel: CalculationUtils.calculateSigmaLevel(100 - yieldPercent),
+            cpk: CalculationUtils.calculateCpk(yieldPercent),
+            qualityScore: CalculationUtils.calculateQualityScore(yieldPercent, failureCount, totalDevices),
+            defectRate: defectRate
+        };
+    }
+} 
+
+// ===== UI.js =====
+/**
+ * UI Module
+ * Handles all user interface related functions and display logic
+ * Version: 1.0
+ * Created: 2025-01-27
+ */
+
+class UI {
+    constructor() {
+        this.initializeEventListeners();
+    }
+
+    /**
+     * Initialize all event listeners
+     */
+    initializeEventListeners() {
+        // Tab navigation
+        document.querySelectorAll('#main-tabs .main-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => this.handleTabClick(e));
+        });
+
+        // File upload
+        const uploadInput = document.getElementById('final-test-upload');
+        if (uploadInput) {
+            uploadInput.addEventListener('change', (e) => this.handleFileUpload(e));
+        }
+
+        // Export buttons
+        this.initializeExportButtons();
+    }
+
+    /**
+     * Handle tab click events
+     * @param {Event} event - Click event
+     */
+    handleTabClick(event) {
+        const tabId = event.target.getAttribute('data-tab');
+        
+        // Update active tab
+        document.querySelectorAll('#main-tabs .main-tab').forEach(t => t.classList.remove('active'));
+        event.target.classList.add('active');
+        
+        // Show corresponding content
+        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.add('hidden'));
+        document.getElementById(tabId + '-tab').classList.remove('hidden');
+    }
+
+    /**
+     * Handle file upload events
+     * @param {Event} event - File upload event
+     */
+    async handleFileUpload(event) {
+        const files = Array.from(event.target.files);
+        if (files.length === 0) return;
+
+        // Show loading state
+        this.showLoadingState();
+
+        try {
+            // Process files (this will be handled by the main application)
+            window.handleFileUpload(files);
+        } catch (error) {
+            console.error('Error handling file upload:', error);
+            this.showError('Error processing files: ' + error.message);
+        }
+    }
+
+    /**
+     * Show loading state
+     */
+    showLoadingState() {
+        const loadingDiv = document.getElementById('final-test-loading');
+        const resultDiv = document.getElementById('final-test-result');
+        
+        if (loadingDiv) loadingDiv.classList.remove('hidden');
+        if (resultDiv) resultDiv.classList.add('hidden');
+    }
+
+    /**
+     * Hide loading state
+     */
+    hideLoadingState() {
+        const loadingDiv = document.getElementById('final-test-loading');
+        const resultDiv = document.getElementById('final-test-result');
+        
+        if (loadingDiv) loadingDiv.classList.add('hidden');
+        if (resultDiv) resultDiv.classList.remove('hidden');
+    }
+
+    /**
+     * Show error message
+     * @param {string} message - Error message
+     */
+    showError(message) {
+        const resultDiv = document.getElementById('final-test-result');
+        if (resultDiv) {
+            resultDiv.innerHTML = `<div class="p-4 bg-red-100 text-red-700 rounded">${message}</div>`;
+            resultDiv.classList.remove('hidden');
+        }
+    }
+
+    /**
+     * Initialize export buttons
+     */
+    initializeExportButtons() {
+        const exportSummary = document.getElementById('export-summary');
+        const exportDetails = document.getElementById('export-details');
+        const exportComparison = document.getElementById('export-comparison');
+
+        if (exportSummary) {
+            exportSummary.addEventListener('click', () => this.exportData('summary'));
+        }
+        if (exportDetails) {
+            exportDetails.addEventListener('click', () => this.exportData('details'));
+        }
+        if (exportComparison) {
+            exportComparison.addEventListener('click', () => this.exportData('comparison'));
+        }
+    }
+
+    /**
+     * Export data to CSV
+     * @param {string} type - Export type (summary, details, comparison)
+     */
+    exportData(type) {
+        if (!window.generateExportData) {
+            console.error('Export data generator not available');
+            return;
+        }
+
+        const data = window.generateExportData(type);
+        this.downloadCSV(data, `wafer_test_${type}_${new Date().toISOString().split('T')[0]}.csv`);
+    }
+
+    /**
+     * Download CSV file
+     * @param {Array} data - CSV data
+     * @param {string} filename - Filename
+     */
+    downloadCSV(data, filename) {
+        const csvContent = data.map(row => 
+            row.map(cell => `"${cell}"`).join(',')
+        ).join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    /**
+     * Display multi-file summary
+     * @param {Object} analytics - Analytics data
+     */
+    displayMultiFileSummary(analytics) {
+        console.log('=== Displaying Multi-File Summary ===');
+        console.log('Received analytics:', analytics);
+
+        try {
+            if (!analytics || typeof analytics !== 'object') {
+                throw new Error("Invalid or null analytics object received.");
+            }
+
+            // Unhide the result section
+            document.getElementById('final-test-result').classList.remove('hidden');
+
+            // Display Aggregated Stats
+            this.displayAggregatedStats(analytics);
+
+            // Display Lot Comparison Table
+            if (analytics.testSequences && typeof analytics.testSequences === 'object') {
+                this.displayLotComparison(analytics);
+            } else {
+                console.warn('No test sequences found in analytics object.');
+                this.displayEmptyLotComparison();
+            }
+            
+            // Display Enhanced Aggregated Analytics
+            if (analytics.enhancedAnalytics && typeof analytics.enhancedAnalytics === 'object') {
+                this.displayEnhancedAnalytics(analytics.enhancedAnalytics);
+            } else {
+                console.warn('No enhanced analytics found in analytics object.');
+                document.getElementById('enhanced-analytics').classList.add('hidden');
+            }
+
+        } catch (error) {
+            console.error('Error in displayMultiFileSummary:', error);
+            this.showError(`Error displaying multi-file summary: ${error.message}`);
+        }
+    }
+
+    /**
+     * Display aggregated statistics
+     * @param {Object} analytics - Analytics data
+     */
+    displayAggregatedStats(analytics) {
+        const aggregatedStats = document.getElementById('aggregated-stats');
+        if (!aggregatedStats) return;
+
+        const yieldPercent = analytics.overallYield || 0;
+        const yieldStatus = yieldPercent >= 95 ? 'Excellent' : 
+                           yieldPercent >= 90 ? 'Good' : 
+                           yieldPercent >= 80 ? 'Fair' : 'Poor';
+        const statusColor = yieldPercent >= 95 ? 'text-green-600' : 
+                           yieldPercent >= 90 ? 'text-blue-600' : 
+                           yieldPercent >= 80 ? 'text-yellow-600' : 'text-red-600';
+
+        aggregatedStats.innerHTML = `
+            <div class="text-center">
+                <div class="text-3xl font-bold">${(analytics.totalGood || 0).toLocaleString()}</div>
+                <div class="text-sm text-gray-600">Total Good</div>
+            </div>
+            <div class="text-center">
+                <div class="text-3xl font-bold">${(analytics.totalFail || 0).toLocaleString()}</div>
+                <div class="text-sm text-gray-600">Total Fail</div>
+            </div>
+            <div class="text-center">
+                <div class="text-3xl font-bold ${statusColor}">${yieldPercent.toFixed(2)}%</div>
+                <div class="text-sm text-gray-600">Overall Yield</div>
+            </div>
+        `;
+    }
+
+    /**
+     * Display lot comparison table
+     * @param {Object} analytics - Analytics data
+     */
+    displayLotComparison(analytics) {
+        try {
+            const lotComparisonTable = document.querySelector('#lot-comparison-table tbody');
+            const sequences = analytics.testSequences;
+            
+            console.log('=== Display Lot Comparison Debug ===');
+            
+            if (!sequences || typeof sequences !== 'object') {
+                console.error("displayLotComparison received invalid or null sequences.");
+                this.displayEmptyLotComparison();
+                return;
+            }
+
+            const sequenceKeys = Object.keys(sequences);
+            console.log('Total sequences for display:', sequenceKeys.length);
+            
+            if (sequenceKeys.length === 0) {
+                this.displayEmptyLotComparison();
+                return;
+            }
+            
+            lotComparisonTable.innerHTML = Object.entries(sequences).map(([lotNumber, sequence]) => {
+                const yieldPercent = sequence.finalYield || 0;
+                const totalPass = sequence.totalPass || 0;
+                const totalFail = sequence.totalFail || 0;
+                const lotSize = sequence.totalInput || 0;
+                const device = sequence.device || 'Unknown';
+                
+                // Get other info from the first test in the sequence
+                let testDate = 'N/A';
+                let operator = 'N/A';
+                if (sequence.tests && sequence.tests.length > 0) {
+                    const firstTestInfo = sequence.tests[0].data.lotInfo;
+                    testDate = firstTestInfo.Start_time || firstTestInfo.Test_date || 'N/A';
+                    operator = firstTestInfo.Operator_id || firstTestInfo.Operator || 'N/A';
+                }
+
+                return `
+                    <tr class="lot-row border-t hover:bg-gray-50 cursor-pointer" data-lot="${lotNumber}">
+                        <td class="p-2 font-medium">${lotNumber}</td>
+                        <td class="p-2 text-center">${device}</td>
+                        <td class="p-2 text-center">${lotSize.toLocaleString()}</td>
+                        <td class="p-2 text-center font-bold">${yieldPercent.toFixed(2)}%</td>
+                        <td class="p-2 text-center text-green-600">${totalPass.toLocaleString()}</td>
+                        <td class="p-2 text-center text-red-600">${totalFail.toLocaleString()}</td>
+                        <td class="p-2 text-center">${testDate}</td>
+                        <td class="p-2 text-center">${operator}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            // Add event listeners to lot rows
+            this.addLotRowEventListeners();
+            
+            // Select first lot by default
+            const firstLot = Object.keys(sequences)[0];
+            if (firstLot) {
+                setTimeout(() => this.selectLot(firstLot), 100);
+            }
+            
+        } catch (error) {
+            console.error('Error in displayLotComparison:', error);
+            this.displayEmptyLotComparison();
+        }
+    }
+
+    /**
+     * Display empty lot comparison
+     */
+    displayEmptyLotComparison() {
+        const lotComparisonTable = document.querySelector('#lot-comparison-table tbody');
+        if (lotComparisonTable) {
+            lotComparisonTable.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-gray-500">No lot data available to compare</td></tr>';
+        }
+    }
+
+    /**
+     * Add event listeners to lot rows
+     */
+    addLotRowEventListeners() {
+        document.querySelectorAll('.lot-row').forEach(row => {
+            row.addEventListener('click', function() {
+                const lotNumber = this.getAttribute('data-lot');
+                if (lotNumber) {
+                    window.selectLot(lotNumber);
+                } else {
+                    console.error('No lot number found in row data');
+                }
+            });
+        });
+    }
+
+    /**
+     * Select lot and update details display
+     * @param {string} lotNumber - Lot number to select
+     */
+    selectLot(lotNumber) {
+        console.log('=== selectLot Triggered ===');
+        console.log('Selected lot number:', lotNumber);
+        
+        // Update visual highlighting
+        document.querySelectorAll('.lot-row').forEach(row => {
+            row.classList.toggle('bg-blue-100', row.getAttribute('data-lot') === lotNumber);
+        });
+
+        if (window.getAggregatedAnalytics) {
+            const aggregatedAnalytics = window.getAggregatedAnalytics();
+            const sequence = aggregatedAnalytics.testSequences[lotNumber];
+
+            if (sequence) {
+                console.log('Found sequence for lot. Displaying details.', sequence);
+                this.displaySequenceDetails(sequence);
+            } else {
+                console.error('Could not find sequence for lot:', lotNumber);
+                this.displaySequenceDetails(null);
+            }
+        }
+    }
+
+    /**
+     * Display sequence details
+     * @param {Object} sequence - Sequence data
+     */
+    displaySequenceDetails(sequence) {
+        const selectedLotSection = document.getElementById('selected-lot-section');
+        if (!selectedLotSection) {
+            console.error('Could not find the main details section: #selected-lot-section');
+            return;
+        }
+
+        if (!sequence) {
+            selectedLotSection.classList.add('hidden');
+            return;
+        }
+
+        // Make the section visible
+        selectedLotSection.classList.remove('hidden');
+
+        const lotInfo = sequence.tests[0].data.lotInfo;
+        const analytics = sequence.analytics;
+
+        // Display lot info
+        this.displayLotInfo(sequence, lotInfo);
+        
+        // Display test summary
+        this.displayTestSummary(sequence);
+        
+        // Display re-test flow
+        this.displayRetestFlow(analytics);
+        
+        // Display quality metrics
+        this.displayQualityMetrics(analytics);
+        
+        // Display failure analysis
+        this.displayFailureAnalysis(analytics);
+        
+        // Display hard bin table
+        this.displayHardBinTable(sequence);
+        
+        // Display test results table
+        this.displayTestResultsTable(sequence, analytics);
+    }
+
+    /**
+     * Display lot information
+     * @param {Object} sequence - Sequence data
+     * @param {Object} lotInfo - Lot info
+     */
+    displayLotInfo(sequence, lotInfo) {
+        const lotInfoDiv = document.getElementById('selected-lot-info');
+        if (!lotInfoDiv) return;
+
+        lotInfoDiv.innerHTML = `
+            <h3 class="font-semibold text-gray-700 mb-2">Lot Information</h3>
+            <div class="space-y-1 text-sm">
+                <div><span class="font-medium">Lot Number:</span> ${sequence.lotNumber}</div>
+                <div><span class="font-medium">Device:</span> ${sequence.device}</div>
+                <div><span class="font-medium">Lot Size:</span> ${(lotInfo.Lot_Size || 0).toLocaleString()}</div>
+                <div><span class="font-medium">Test Date:</span> ${lotInfo.Start_time || lotInfo.Test_date || 'N/A'}</div>
+                <div><span class="font-medium">Operator:</span> ${lotInfo.Operator_id || lotInfo.Operator || 'N/A'}</div>
+            </div>`;
+    }
+
+    /**
+     * Display test summary
+     * @param {Object} sequence - Sequence data
+     */
+    displayTestSummary(sequence) {
+        const summaryDiv = document.getElementById('selected-lot-summary');
+        if (!summaryDiv) return;
+
+        summaryDiv.innerHTML = `
+            <h3 class="font-semibold text-gray-700 mb-2">Test Summary</h3>
+            <div class="grid grid-cols-3 gap-4">
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-green-600">${sequence.totalPass.toLocaleString()}</div>
+                    <div class="text-sm text-gray-600">Total Pass</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-red-600">${sequence.totalFail.toLocaleString()}</div>
+                    <div class="text-sm text-gray-600">Final Fail</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-blue-600">${sequence.finalYield.toFixed(2)}%</div>
+                    <div class="text-sm text-gray-600">Final Yield</div>
+                </div>
+            </div>`;
+    }
+
+    /**
+     * Display re-test flow
+     * @param {Object} analytics - Analytics data
+     */
+    displayRetestFlow(analytics) {
+        const retestFlowDiv = document.getElementById('selected-lot-retest-flow');
+        if (!retestFlowDiv || !analytics.reTestFlow) return;
+
+        const retestFlow = analytics.reTestFlow;
+        retestFlowDiv.innerHTML = `
+            <h3 class="font-semibold mb-2 text-purple-700">🔄 Re-Test Flow Analysis</h3>
+            <div class="space-y-1 text-sm">
+                <div><span class="font-medium">Sequence:</span> ${retestFlow.testSequence}</div>
+                <div><span class="font-medium">Initial Lot Size:</span> ${retestFlow.initialLotSize.toLocaleString()}</div>
+                <div><span class="font-medium">Final Yield:</span> <span class="font-bold">${retestFlow.finalYield.toFixed(2)}%</span></div>
+                ${retestFlow.isSingleTest ? '<div class="text-xs text-gray-500">Single test result - no re-test flow</div>' : ''}
+            </div>`;
+    }
+
+    /**
+     * Display quality metrics
+     * @param {Object} analytics - Analytics data
+     */
+    displayQualityMetrics(analytics) {
+        const qualityDiv = document.getElementById('selected-lot-quality');
+        if (!qualityDiv || !analytics.qualityMetrics) return;
+
+        const quality = analytics.qualityMetrics;
+        qualityDiv.innerHTML = `
+            <h3 class="font-semibold mb-2 text-purple-700">🏅 Quality Metrics</h3>
+            <div class="space-y-1 text-sm">
+                 <div><span class="font-medium">Sigma Level:</span> ${quality.sigmaLevel.toFixed(2)}</div>
+                 <div><span class="font-medium">Cpk:</span> ${quality.cpk.toFixed(2)}</div>
+                 <div><span class="font-medium">Quality Score:</span> <span class="font-bold">${quality.qualityScore.toFixed(1)}/100</span></div>
+            </div>`;
+    }
+
+    /**
+     * Display failure analysis
+     * @param {Object} analytics - Analytics data
+     */
+    displayFailureAnalysis(analytics) {
+        const failureDiv = document.getElementById('selected-lot-failure-analysis');
+        if (!failureDiv || !analytics.rootCause) return;
+
+        const rootCause = analytics.rootCause;
+        failureDiv.innerHTML = `
+            <h3 class="font-semibold mb-2 text-purple-700">🔬 Failure Analysis</h3>
+            <div class="text-sm">
+                <p class="font-medium mb-1">Potential Root Causes:</p>
+                <ul class="list-disc list-inside">
+                    ${rootCause.potentialCauses.map(c => `<li>${c}</li>`).join('')}
+                </ul>
+            </div>`;
+    }
+
+    /**
+     * Display hard bin table
+     * @param {Object} sequence - Sequence data
+     */
+    displayHardBinTable(sequence) {
+        console.log('[Debug] displayHardBinTable called. Sequence data:', sequence);
+        
+        const hardBinContainer = document.getElementById('hard-bin-table-container');
+        if (!hardBinContainer) {
+            console.log('[Debug] Hard bin container not found!');
+            return;
+        }
+
+        const hardBinTbody = document.getElementById('hard-bin-tbody');
+        if (!hardBinTbody) {
+            console.log('[Debug] Hard bin table body not found!');
+            return;
+        }
+
+        // Get hard bin data from the sequence
+        const hardBinData = sequence.tests[0]?.data?.hardbin || {};
+        
+        if (Object.keys(hardBinData).length === 0) {
+            hardBinTbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                        No hard bin data available for this lot
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        // Calculate total for percentage calculation
+        const total = Object.values(hardBinData).reduce((sum, count) => sum + count, 0);
+
+        // Generate table rows
+        const tableRows = Object.entries(hardBinData).map(([binCode, count]) => {
+            const percentage = total > 0 ? ((count / total) * 100).toFixed(2) : '0.00';
+            const category = binCode === '1' ? 'Pass' : 'Fail';
+            const rowClass = binCode === '1' ? 'text-green-600' : 'text-red-600';
+            
+            return `
+                <tr class="${rowClass}">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">${binCode}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${category} Bin</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${count.toLocaleString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${percentage}%</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            binCode === '1' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }">
+                            ${category}
+                        </span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        hardBinTbody.innerHTML = tableRows;
+        console.log('[Debug] Hard bin table populated successfully');
+    }
+
+    /**
+     * Display test results table
+     * @param {Object} sequence - Sequence data
+     * @param {Object} analytics - Analytics data
+     */
+    displayTestResultsTable(sequence, analytics) {
+        // Check if test results container exists
+        const testResultsContainer = document.getElementById('test-results-container');
+        if (!testResultsContainer) {
+            console.log('[Debug] Test results container not found');
+            return;
+        }
+
+        // Get test results from the first test in the sequence (individual lot data)
+        const testResults = sequence.tests[0]?.data?.testResults || [];
+        console.log(`Displaying test results for ${sequence.lotNumber}:`, testResults);
+        
+        if (testResults && testResults.length > 0) {
+            // Filter out PASS results and show only FAIL results for better analysis
+            const failResults = testResults.filter(test => test.result === 'FAIL');
+            
+            if (failResults.length > 0) {
+                const tableHTML = `
+                    <div class="bg-white rounded-lg shadow border">
+                        <div class="p-6 border-b">
+                            <h3 class="text-lg font-semibold text-gray-800">📋 Test Results (Failures Only)</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Test Description</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Site 1</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Site 2</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Site 3</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Site 4</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    ${failResults.slice(0, 20).map(test => `
+                                        <tr class="border-t">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm">${test.test || test.description || 'Unknown Test'}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium">${test.result}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-center">${test.total || 0}</td>
+                                            ${[1, 2, 3, 4].map(siteNum => `<td class="px-6 py-4 whitespace-nowrap text-sm text-center">${test[`site${siteNum}`] || 0}</td>`).join('')}
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+                testResultsContainer.innerHTML = tableHTML;
+            } else {
+                testResultsContainer.innerHTML = `
+                    <div class="bg-white rounded-lg shadow border">
+                        <div class="p-6 text-center">
+                            <div class="text-green-600 text-lg font-medium mb-2">✅ All tests passed</div>
+                            <p class="text-gray-500">No failures detected for this lot</p>
+                        </div>
+                    </div>
+                `;
+            }
+        } else {
+            testResultsContainer.innerHTML = `
+                <div class="bg-white rounded-lg shadow border">
+                    <div class="p-6 text-center">
+                        <p class="text-gray-500">No detailed failure data available for this lot</p>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Display enhanced analytics
+     * @param {Object} analytics - Enhanced analytics data
+     */
+    displayEnhancedAnalytics(analytics) {
+        console.log('=== Displaying Enhanced Analytics ===', analytics);
+        const enhancedAnalyticsDiv = document.getElementById('enhanced-analytics');
+        
+        // Check if we have meaningful data to display
+        const hasTestResults = analytics.testResults && analytics.testResults.length > 0;
+        const hasMultipleLots = window.allData && window.allData.length > 1;
+        
+        if (!hasTestResults && !hasMultipleLots) {
+            enhancedAnalyticsDiv.classList.add('hidden');
+            return;
+        }
+        
+        enhancedAnalyticsDiv.classList.remove('hidden');
+
+        // Display yield trend analysis
+        this.displayYieldTrendAnalysis(analytics, hasMultipleLots);
+
+        // Display failure pattern analysis
+        this.displayFailurePatternAnalysis(analytics, hasTestResults);
+
+        // Display site performance
+        this.displaySitePerformance(analytics, hasTestResults);
+        
+        // Display failure correlation analysis
+        this.displayFailureCorrelationAnalysis(analytics, hasTestResults);
+    }
+
+    /**
+     * Display yield trend analysis
+     * @param {Object} analytics - Analytics data
+     * @param {boolean} hasMultipleLots - Whether multiple lots are available
+     */
+    displayYieldTrendAnalysis(analytics, hasMultipleLots) {
+        const trendContent = document.getElementById('trend-content');
+        if (!trendContent) return;
+
+        if (hasMultipleLots && analytics.yieldTrend && analytics.yieldTrend.average > 0) {
+            const trend = analytics.yieldTrend;
+            trendContent.innerHTML = `
+                <div class="text-sm space-y-1">
+                    <div><span class="font-medium">Average Yield:</span> <span class="font-bold">${trend.average.toFixed(2)}%</span></div>
+                    <div><span class="font-medium">Yield Range:</span> ${trend.range}</div>
+                    <div><span class="font-medium">Trend:</span> <span class="font-semibold">${trend.trend}</span></div>
+                    <div><span class="font-medium">Variation:</span> ${trend.variation.toFixed(2)}%</div>
+                </div>`;
+        } else {
+            trendContent.innerHTML = `<p class="text-sm text-gray-500">Multiple distinct lots needed for trend analysis.</p>`;
+        }
+    }
+
+    /**
+     * Display failure pattern analysis
+     * @param {Object} analytics - Analytics data
+     * @param {boolean} hasTestResults - Whether test results are available
+     */
+    displayFailurePatternAnalysis(analytics, hasTestResults) {
+        const patternContent = document.getElementById('pattern-content');
+        if (!patternContent) return;
+
+        if (hasTestResults && analytics.failurePatterns && analytics.failurePatterns.topPatterns && analytics.failurePatterns.topPatterns.length > 0) {
+            const patterns = analytics.failurePatterns.topPatterns;
+            patternContent.innerHTML = `
+                <ul class="text-xs space-y-1">
+                    ${patterns.map(p => `
+                        <li class="flex justify-between">
+                            <span class="truncate pr-2" title="${p.pattern}">${p.pattern}</span>
+                            <span class="font-bold">${p.count}</span>
+                        </li>`).join('')}
+                </ul>`;
+        } else {
+            patternContent.innerHTML = `<p class="text-sm text-gray-500">No significant failure patterns found.</p>`;
+        }
+    }
+
+    /**
+     * Display site performance
+     * @param {Object} analytics - Analytics data
+     * @param {boolean} hasTestResults - Whether test results are available
+     */
+    displaySitePerformance(analytics, hasTestResults) {
+        const siteContent = document.getElementById('site-content');
+        if (!siteContent) return;
+
+        if (hasTestResults && analytics.sitePerformance && analytics.sitePerformance.distribution && Object.keys(analytics.sitePerformance.distribution).length > 0) {
+            const distribution = analytics.sitePerformance.distribution;
+            const total = Object.values(distribution).reduce((sum, site) => sum + site.total, 0);
+            siteContent.innerHTML = `
+                <ul class="text-sm space-y-1">
+                    ${Object.entries(distribution).map(([site, data]) => `
+                        <li class="flex justify-between">
+                            <span>${site.toUpperCase()}</span>
+                            <span class="font-semibold">${((data.total / total) * 100).toFixed(1)}%</span>
+                        </li>`).join('')}
+                </ul>`;
+        } else {
+            siteContent.innerHTML = `<p class="text-sm text-gray-500">No site performance data available.</p>`;
+        }
+    }
+
+    /**
+     * Display failure correlation analysis
+     * @param {Object} analytics - Analytics data
+     * @param {boolean} hasTestResults - Whether test results are available
+     */
+    displayFailureCorrelationAnalysis(analytics, hasTestResults) {
+        const correlationContent = document.getElementById('correlation-content');
+        if (!correlationContent) return;
+
+        if (hasTestResults && analytics.failureCorrelations && analytics.failureCorrelations.correlations && analytics.failureCorrelations.correlations.length > 0) {
+            const correlations = analytics.failureCorrelations.correlations;
+            correlationContent.innerHTML = `
+                <ul class="text-xs space-y-1">
+                    ${correlations.slice(0, 5).map(c => `
+                        <li class="border-t pt-1 mt-1">
+                            <div class="flex justify-between">
+                                <span class="truncate pr-2" title="${c.pair}">${c.pair}</span>
+                                <span class="font-bold">${(c.correlation * 100).toFixed(1)}%</span>
+                            </div>
+                            <div class="text-right text-gray-500">${c.interpretation}</div>
+                        </li>`).join('')}
+                </ul>`;
+        } else {
+            correlationContent.innerHTML = `<p class="text-sm text-gray-500">Insufficient data for correlation analysis.</p>`;
+        }
+    }
+} 
+
+// ===== STDFFileHandler.js =====
+/**
+ * STDF File Handler - Refactored Version
+ * Handles parsing of STDF files, summary files, and compressed files
+ * Version: 2.0
+ * Created: 2025-01-27
+ * Updated: 2025-01-27 - Refactored to use modular structure
+ */
+
+
+
+
+
+
+class STDFFileHandler {
+    constructor() {
+        this.supportedFormats = ['.stdf', '.stdf.gz', '.lotSumTXT', '.lotsumtxt'];
+        this.parsers = {
+            '.lotSumTXT': this.parseSummaryFile.bind(this),
+            '.lotsumtxt': this.parseSummaryFile.bind(this),
+            '.stdf': this.parseSTDFFile.bind(this),
+            '.stdf.gz': this.parseCompressedSTDF.bind(this)
+        };
+        this.processedFiles = new Map(); // Store multiple files
+        this.testSequences = new Map(); // Store test sequences by lot
+    }
+
+    /**
+     * Main file loading method
+     * @param {File} file - The file to parse
+     * @returns {Promise<Object>} Parsed data object
+     */
+    async loadFile(file) {
+        try {
+            console.log(`Processing file: ${file.name}, size: ${file.size}, type: ${file.type}`);
+            
+            const extension = FileUtils.getFileExtension(file.name);
+            console.log(`Detected extension: ${extension}`);
+            
+            if (!this.parsers[extension]) {
+                throw new Error(`Unsupported file format: ${extension}`);
+            }
+
+            console.log(`Using parser for: ${extension}`);
+            const result = await this.parsers[extension](file);
+            
+            // Store the result for multiple file support
+            this.processedFiles.set(file.name, {
+                success: true,
+                fileName: file.name,
+                fileType: extension,
+                data: result,
+                timestamp: new Date().toISOString()
+            });
+
+            return {
+                success: true,
+                fileName: file.name,
+                fileType: extension,
+                data: result,
+                timestamp: new Date().toISOString()
+            };
+
+        } catch (error) {
+            console.error(`Error processing ${file.name}:`, error);
+            return {
+                success: false,
+                fileName: file.name,
+                error: error.message,
+                timestamp: new Date().toISOString()
+            };
+        }
+    }
+
+    /**
+     * Get all processed files data
+     * @returns {Array} Array of processed file data
+     */
+    getAllProcessedFiles() {
+        return Array.from(this.processedFiles.values());
+    }
+
+    /**
+     * Parse summary file
+     * @param {File} file - Summary file to parse
+     * @returns {Promise<Object>} Parsed data
+     */
+    async parseSummaryFile(file) {
+        try {
+            const content = await file.text();
+            const parser = new SummaryFileParser();
+            const result = parser.parseSummaryFile(content);
+            
+            // Use lot number from parsed content if available, otherwise fall back to filename
+            if (result.lotInfo && result.lotInfo.Lot_number) {
+                result.lotNumber = result.lotInfo.Lot_number;
+            } else {
+                // Fallback to filename extraction
+                result.lotNumber = FileUtils.extractLotNumberFromFileName(file.name, content);
+            }
+            
+            // Ensure device name is set
+            if (result.lotInfo && result.lotInfo.Device_name) {
+                result.deviceName = result.lotInfo.Device_name;
+            } else {
+                result.deviceName = 'Unknown';
+            }
+            
+            // Add file metadata
+            result.fileName = file.name;
+            result.fileSize = file.size;
+            result.parseTime = new Date().toISOString();
+            
+            console.log(`Parsed summary file: ${file.name}`);
+            console.log(`Lot number: ${result.lotNumber}`);
+            console.log(`Device name: ${result.deviceName}`);
+            
+            return result;
+        } catch (error) {
+            console.error(`Error in parseSummaryFile:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Parse compressed STDF file
+     * @param {File} file - Compressed STDF file to parse
+     * @returns {Promise<Object>} Parsed data
+     */
+    async parseCompressedSTDF(file) {
+        try {
+            const compressedData = await file.arrayBuffer();
+            const decompressedData = pako.inflate(new Uint8Array(compressedData));
+            
+            // Create a new file object with decompressed data
+            const decompressedFile = new File([decompressedData], file.name.replace('.gz', ''), {
+                type: 'application/octet-stream'
+            });
+            
+            return await this.parseSTDFFile(decompressedFile);
+        } catch (error) {
+            console.error(`Error in parseCompressedSTDF:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Parse STDF file
+     * @param {File} file - STDF file to parse
+     * @returns {Promise<Object>} Parsed data
+     */
+    async parseSTDFFile(file) {
+        // Placeholder for STDF parsing - would need STDFRecordParser implementation
+        console.log('STDF parsing not yet implemented');
+        return {
+            lotInfo: {},
+            testResults: [],
+            summary: {},
+            analytics: {}
+        };
+    }
+
+    /**
+     * Get aggregated analytics
+     * @returns {Object} Aggregated analytics
+     */
+    getAggregatedAnalytics() {
+        const allFiles = this.getAllProcessedFiles();
+        return Analytics.getAggregatedAnalytics(allFiles);
+    }
+
+    /**
+     * Test sequence detection (for debugging)
+     */
+    testSequenceDetection() {
+        const files = this.getAllProcessedFiles();
+        const sequences = Analytics.detectTestSequences(files);
+        
+        console.log('=== Test Sequence Detection Results ===');
+        Object.keys(sequences).forEach(lotNumber => {
+            const sequence = sequences[lotNumber];
+            console.log(`Lot ${lotNumber}: ${sequence.tests.length} tests`);
+            sequence.tests.forEach(test => {
+                console.log(`  ${test.testType}: ${test.fileName}`);
+            });
+        });
+        
+        return sequences;
+    }
+
+    /**
+     * Test filename parsing (for debugging)
+     * @param {string} fileName - File name to test
+     */
+    testFileNameParsing(fileName) {
+        console.log('=== File Name Parsing Test ===');
+        console.log('File name:', fileName);
+        
+        const lotNumber = FileUtils.extractLotNumberFromFileName(fileName);
+        const testType = FileUtils.extractTestType(fileName);
+        
+        console.log('Extracted lot number:', lotNumber);
+        console.log('Extracted test type:', testType);
+        
+        return { lotNumber, testType };
+    }
+}
+
+// Export for use in other modules
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { STDFFileHandler };
+} 
+
+// ===== SummaryFileParser.js =====
+/**
+ * Summary File Parser
+ * Handles parsing of .lotSumTXT summary files
+ * Version: 1.0
+ * Created: 2025-01-27
+ */
+
+
+class SummaryFileParser {
+    constructor() {
+        this.sections = {
+            HEADER: 'header',
+            TEST_RESULTS: 'test_results',
+            SUMMARY: 'summary',
+            HARDBIN: 'hardbin'
+        };
+    }
+
+    /**
+     * Parse summary file content
+     * @param {string} content - File content
+     * @returns {Object} Parsed data
+     */
+    parseSummaryFile(content) {
+        try {
+            console.log(`Parsing content with ${content.length} characters`);
+            
+            const lines = content.split('\n');
+            const lotInfo = {};
+            const testResults = [];
+            const siteResults = { Site1: [], Site2: [], Site3: [], Site4: [] };
+            
+            let currentSection = this.sections.HEADER;
+            
+            // Parse each line
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                // Section detection - more flexible
+                if (line.includes('Soft Hard') || line.includes('Test Results:') || line.includes('Test1:') || 
+                    (line.includes('PASS') && line.includes('FAIL')) || 
+                    line.match(/^\w+\s+\d+/) || // Any line starting with word and number
+                    line.match(/^\d+\s+\d+\s+(PASS|FAIL)/)) {
+                    currentSection = this.sections.TEST_RESULTS;
+                    console.log(`Switched to TEST_RESULTS section at line ${i + 1}: "${line}"`);
+                } else if (line.includes('* GOOD') || line.includes('Summary:') || line.includes('Total Devices:') || 
+                          line.includes('Yield:') || line.includes('* FAIL') || line.includes('* TOTAL')) {
+                    currentSection = this.sections.SUMMARY;
+                    console.log(`Switched to SUMMARY section at line ${i + 1}: "${line}"`);
+                } else if (line.includes('* HARDBIN') || line.includes('Hardbin Summary:') || line.includes('Bin ')) {
+                    currentSection = this.sections.HARDBIN;
+                    console.log(`Switched to HARDBIN section at line ${i + 1}: "${line}"`);
+                }
+                
+                // Parse based on current section
+                switch (currentSection) {
+                    case this.sections.HEADER:
+                        this.parseHeaderLine(line, lotInfo);
+                        break;
+                    case this.sections.TEST_RESULTS:
+                        const testResult = this.parseTestResultLine(line);
+                        if (testResult) {
+                            testResults.push(testResult);
+                            this.updateSiteResults(testResult, siteResults);
+                            console.log(`Added test result: ${testResult.description} = ${testResult.result}`);
+                        }
+                        break;
+                }
+            }
+            
+            // Parse summary section
+            const summary = this.parseSummarySection(lines, 0);
+            
+            // Parse hardbin section
+            const hardbin = this.parseHardbinSection(lines, 0);
+            
+            // Fallback: If no test results were parsed, create them from summary data
+            if (testResults.length === 0 && summary.goodCount !== undefined) {
+                console.log('No test results parsed, creating fallback from summary data');
+                
+                // Create a synthetic test result from the summary
+                const syntheticTest = {
+                    softBin: 1,
+                    hardBin: 1,
+                    result: summary.goodCount > summary.failCount ? 'PASS' : 'FAIL',
+                    description: 'Synthetic_Test',
+                    total: summary.totalCount || (summary.goodCount + summary.failCount),
+                    percentage: summary.goodPercentage || 0,
+                    site1: Math.floor((summary.goodCount || 0) / 4),
+                    site2: Math.floor((summary.goodCount || 0) / 4),
+                    site3: Math.floor((summary.goodCount || 0) / 4),
+                    site4: (summary.goodCount || 0) - (Math.floor((summary.goodCount || 0) / 4) * 3),
+                    sites: {
+                        1: Math.floor((summary.goodCount || 0) / 4),
+                        2: Math.floor((summary.goodCount || 0) / 4),
+                        3: Math.floor((summary.goodCount || 0) / 4),
+                        4: (summary.goodCount || 0) - (Math.floor((summary.goodCount || 0) / 4) * 3)
+                    },
+                    totalSites: summary.goodCount || 0
+                };
+                
+                testResults.push(syntheticTest);
+                this.updateSiteResults(syntheticTest, siteResults);
+                console.log('Created synthetic test result from summary data');
+            }
+            
+            // Calculate additional analytics
+            const analytics = this.calculateAnalytics(testResults, summary, lotInfo);
+            
+            const result = {
+                lotInfo,
+                testResults,
+                siteResults,
+                summary,
+                hardbin,
+                analytics,
+                metadata: {
+                    totalTests: testResults.length,
+                    totalSites: 4,
+                    parseTime: new Date().toISOString()
+                }
+            };
+            
+            console.log(`Final parsing result:`, result);
+            return result;
+            
+        } catch (error) {
+            console.error(`Error in parseSummaryFile:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Calculate additional analytics
+     * @param {Array} testResults - Test results array
+     * @param {Object} summary - Summary data
+     * @param {Object} lotInfo - Lot information
+     * @returns {Object} Analytics data
+     */
+    calculateAnalytics(testResults, summary, lotInfo) {
+        const totalDevices = lotInfo.Lot_Size || 0;
+        const failures = testResults.filter(t => t.result === 'FAIL');
+        const failureCount = failures.length;
+
+        const yieldAnalysis = this.analyzeYieldTrend(summary.yieldPercent, failureCount);
+        const failureAnalysis = {
+            failures: failures,
+            failureCount: failureCount,
+            failureRate: totalDevices > 0 ? (failureCount / totalDevices) * 100 : 0
+        };
+        const rootCause = this.performRootCauseAnalysis(failures, lotInfo);
+        const qualityMetrics = this.calculateQualityMetrics(summary.yieldPercent, failureCount, totalDevices);
+
+        // Site performance calculation
+        const sitePerformance = {};
+        testResults.forEach(test => {
+            if (test.sites) {
+                Object.entries(test.sites).forEach(([siteNum, count]) => {
+                    const siteKey = `Site${siteNum}`;
+                    if (!sitePerformance[siteKey]) {
+                        sitePerformance[siteKey] = { total: 0, status: 'Unknown' };
+                    }
+                    sitePerformance[siteKey].total += count;
+                });
+            }
+        });
+
+        return {
+            testResults: testResults,
+            yieldAnalysis,
+            failureAnalysis,
+            sitePerformance,
+            rootCause,
+            qualityMetrics
+        };
+    }
+
+    /**
+     * Get site status based on yield
+     * @param {number} yieldPercent - Site yield percentage
+     * @returns {string} Site status
+     */
+    getSiteStatus(yieldPercent) {
+        if (yieldPercent >= 90) return 'Excellent';
+        if (yieldPercent >= 80) return 'Good';
+        if (yieldPercent >= 70) return 'Fair';
+        if (yieldPercent >= 50) return 'Poor';
+        return 'Critical';
+    }
+
+    /**
+     * Calculate failure severity
+     * @param {number} total - Total failures
+     * @param {number} totalDevices - Total devices
+     * @returns {string} Severity level
+     */
+    calculateFailureSeverity(total, totalDevices) {
+        const percentage = (total / totalDevices) * 100;
+        if (percentage > 20) return 'Critical';
+        if (percentage > 10) return 'High';
+        if (percentage > 5) return 'Medium';
+        if (percentage > 1) return 'Low';
+        return 'Minor';
+    }
+
+    /**
+     * Calculate failure impact
+     * @param {number} total - Total failures
+     * @param {number} totalDevices - Total devices
+     * @returns {number} Impact score
+     */
+    calculateFailureImpact(total, totalDevices) {
+        return (total / totalDevices) * 100;
+    }
+
+    /**
+     * Calculate failure priority
+     * @param {number} percentage - Failure percentage
+     * @param {number} total - Total failures
+     * @returns {number} Priority score
+     */
+    calculateFailurePriority(percentage, total) {
+        return (percentage * 0.7) + (total * 0.3);
+    }
+
+    /**
+     * Analyze failure patterns
+     * @param {Array} failures - Failure array
+     * @param {number} totalDevices - Total devices
+     * @returns {Array} Failure patterns
+     */
+    analyzeFailurePatterns(failures, totalDevices) {
+        const patterns = [];
+        
+        // Pattern 1: High frequency, low impact
+        const highFreqLowImpact = failures.filter(f => f.total > 10 && (f.total / totalDevices) < 0.05);
+        if (highFreqLowImpact.length > 0) {
+            patterns.push({
+                type: 'High Frequency, Low Impact',
+                description: 'Multiple small failures',
+                count: highFreqLowImpact.length,
+                impact: 'Low'
+            });
+        }
+        
+        // Pattern 2: Low frequency, high impact
+        const lowFreqHighImpact = failures.filter(f => f.total <= 10 && (f.total / totalDevices) > 0.1);
+        if (lowFreqHighImpact.length > 0) {
+            patterns.push({
+                type: 'Low Frequency, High Impact',
+                description: 'Rare but significant failures',
+                count: lowFreqHighImpact.length,
+                impact: 'High'
+            });
+        }
+        
+        // Pattern 3: Systematic failures
+        const systematicFailures = failures.filter(f => f.percentage > 15);
+        if (systematicFailures.length > 0) {
+            patterns.push({
+                type: 'Systematic Failures',
+                description: 'Consistent failure patterns',
+                count: systematicFailures.length,
+                impact: 'Medium'
+            });
+        }
+        
+        return patterns;
+    }
+
+    /**
+     * Perform root cause analysis
+     * @param {Array} failures - Failure array
+     * @param {Object} lotInfo - Lot information
+     * @returns {Object} Root cause analysis
+     */
+    performRootCauseAnalysis(failures, lotInfo) {
+        const analysis = {
+            potentialCauses: [],
+            recommendations: []
+        };
+        
+        // Analyze failure types
+        const usbFailures = failures.filter(f => f.description.toLowerCase().includes('usb'));
+        const voltageFailures = failures.filter(f => f.description.toLowerCase().includes('voltage') || f.description.toLowerCase().includes('voh'));
+        const functionFailures = failures.filter(f => f.description.toLowerCase().includes('function'));
+        
+        if (usbFailures.length > 0) {
+            analysis.potentialCauses.push('USB interface issues');
+            analysis.recommendations.push('Check USB connection and driver compatibility');
+        }
+        
+        if (voltageFailures.length > 0) {
+            analysis.potentialCauses.push('Voltage regulation problems');
+            analysis.recommendations.push('Verify power supply stability and voltage levels');
+        }
+        
+        if (functionFailures.length > 0) {
+            analysis.potentialCauses.push('Functional test failures');
+            analysis.recommendations.push('Review test conditions and device specifications');
+        }
+        
+        // Default recommendations if no specific patterns found
+        if (analysis.potentialCauses.length === 0) {
+            analysis.potentialCauses.push('General test environment issues');
+            analysis.recommendations.push('Review test setup and environmental conditions');
+        }
+        
+        return analysis;
+    }
+
+    /**
+     * Calculate quality metrics
+     * @param {number} yieldPercent - Yield percentage
+     * @param {number} failureCount - Failure count
+     * @param {number} totalDevices - Total devices
+     * @returns {Object} Quality metrics
+     */
+    calculateQualityMetrics(yieldPercent, failureCount, totalDevices) {
+        const defectRate = (100 - yieldPercent) / 100;
+        
+        return {
+            sigmaLevel: this.calculateSigmaLevel(100 - yieldPercent),
+            cpk: this.calculateCpk(yieldPercent),
+            qualityScore: this.calculateQualityScore(yieldPercent, failureCount, totalDevices),
+            defectRate: defectRate
+        };
+    }
+
+    /**
+     * Calculate sigma level from defect rate
+     * @param {number} defectRate - Defect rate percentage
+     * @returns {number} Sigma level
+     */
+    calculateSigmaLevel(defectRate) {
+        // Convert percentage to decimal
+        const defectRateDecimal = defectRate / 100;
+        
+        // Simple sigma level calculation
+        if (defectRateDecimal <= 0.0000034) return 6.0; // 3.4 DPMO
+        if (defectRateDecimal <= 0.000233) return 5.0;  // 233 DPMO
+        if (defectRateDecimal <= 0.00621) return 4.0;   // 6,210 DPMO
+        if (defectRateDecimal <= 0.0668) return 3.0;    // 66,800 DPMO
+        if (defectRateDecimal <= 0.3085) return 2.0;    // 308,500 DPMO
+        if (defectRateDecimal <= 0.6915) return 1.0;    // 691,500 DPMO
+        
+        return 0.0; // Below 1 sigma
+    }
+
+    /**
+     * Calculate Cpk (Process Capability Index)
+     * @param {number} yieldPercent - Yield percentage
+     * @returns {number} Cpk value
+     */
+    calculateCpk(yieldPercent) {
+        // Simplified Cpk calculation based on yield
+        const defectRate = 100 - yieldPercent;
+        const sigmaLevel = this.calculateSigmaLevel(defectRate);
+        
+        // Cpk is approximately sigma/3
+        return sigmaLevel / 3;
+    }
+
+    /**
+     * Calculate quality score (0-100)
+     * @param {number} yieldPercent - Yield percentage
+     * @param {number} failureCount - Number of failures
+     * @param {number} totalDevices - Total number of devices
+     * @returns {number} Quality score
+     */
+    calculateQualityScore(yieldPercent, failureCount, totalDevices) {
+        // Base score from yield (70% weight)
+        const yieldScore = (yieldPercent / 100) * 70;
+        
+        // Penalty for failure rate (30% weight)
+        const failureRate = totalDevices > 0 ? (failureCount / totalDevices) * 100 : 0;
+        const failurePenalty = Math.min(failureRate * 0.3, 30);
+        
+        return Math.max(0, Math.min(100, yieldScore - failurePenalty));
+    }
+
+    /**
+     * Predict yield based on current data
+     * @param {number} currentYield - Current yield percentage
+     * @param {number} criticalFailures - Number of critical failures
+     * @returns {number} Predicted yield
+     */
+    predictYield(currentYield, criticalFailures) {
+        // Simple prediction model
+        const criticalFailureImpact = criticalFailures * 0.5; // Each critical failure reduces yield by 0.5%
+        return Math.max(0, currentYield - criticalFailureImpact);
+    }
+
+    /**
+     * Analyze yield trend
+     * @param {number} yieldPercent - Current yield percentage
+     * @param {number} criticalFailures - Number of critical failures
+     * @returns {string} Trend description
+     */
+    analyzeYieldTrend(yieldPercent, criticalFailures) {
+        if (yieldPercent >= 95) return 'Excellent';
+        if (yieldPercent >= 90) return 'Good';
+        if (yieldPercent >= 80) return 'Fair';
+        if (yieldPercent >= 70) return 'Poor';
+        return 'Critical';
+    }
+
+    /**
+     * Categorize failure by description
+     * @param {string} description - Failure description
+     * @returns {string} Failure category
+     */
+    categorizeFailure(description) {
+        const desc = description.toLowerCase();
+        
+        if (desc.includes('usb')) return 'USB Interface';
+        if (desc.includes('voltage') || desc.includes('voh') || desc.includes('vol')) return 'Voltage';
+        if (desc.includes('function') || desc.includes('func')) return 'Functional';
+        if (desc.includes('timing') || desc.includes('time')) return 'Timing';
+        if (desc.includes('current') || desc.includes('cur')) return 'Current';
+        if (desc.includes('power') || desc.includes('pwr')) return 'Power';
+        
+        return 'Other';
+    }
+
+    /**
+     * Parse header line
+     * @param {string} line - Header line
+     * @param {Object} lotInfo - Lot info object to populate
+     */
+    parseHeaderLine(line, lotInfo) {
+        // Pattern 1: Lot number extraction - handle multiple spaces
+        const lotMatch = line.match(/Lot_number\s*:\s*([A-Z0-9\-]+)/i);
+        if (lotMatch) {
+            lotInfo.Lot_number = lotMatch[1];
+            console.log(`Extracted lot number: ${lotMatch[1]}`);
+        }
+        
+        // Pattern 2: Device name extraction - handle multiple spaces
+        const deviceMatch = line.match(/Device_name\s*:\s*([A-Z0-9_]+)/i);
+        if (deviceMatch) {
+            lotInfo.Device_name = deviceMatch[1];
+            console.log(`Extracted device name: ${deviceMatch[1]}`);
+        }
+        
+        // Pattern 3: Lot size extraction - handle multiple spaces
+        const sizeMatch = line.match(/Lot_Size\s*:\s*(\d+)/i);
+        if (sizeMatch) {
+            lotInfo.Lot_Size = parseInt(sizeMatch[1], 10);
+            console.log(`Extracted lot size: ${sizeMatch[1]}`);
+        }
+        
+        // Pattern 4: Date/time extraction
+        const dateMatch = line.match(/(\d{8})/);
+        if (dateMatch) {
+            lotInfo.Start_time = FileUtils.parseDateTime(dateMatch[1]);
+            console.log(`Extracted date: ${dateMatch[1]}`);
+        }
+        
+        // Pattern 5: Operator extraction - handle multiple spaces
+        const operatorMatch = line.match(/Operator_id\s*:\s*([A-Z0-9]+)/i);
+        if (operatorMatch) {
+            lotInfo.Operator_id = operatorMatch[1];
+            console.log(`Extracted operator: ${operatorMatch[1]}`);
+        }
+    }
+
+    /**
+     * Parse test result line
+     * @param {string} line - Test result line
+     * @returns {Object|null} Parsed test result
+     */
+    parseTestResultLine(line) {
+        if (!line || line.trim() === '') return null;
+        
+        const trimmedLine = line.trim();
+        
+        // Debug: Log only lines that might be test data (not every line)
+        if (trimmedLine.match(/^\w+\s+\d+/) || trimmedLine.match(/^\d+\s+\d+\s+(PASS|FAIL)/)) {
+            console.log(`Processing potential test line: "${trimmedLine}"`);
+        }
+        
+        // Pattern 0: Actual file format "   1    1    PASS pass_50mA                                          906( 53.0)    216     249     204     237   "
+        const actualFormatMatch = trimmedLine.match(/^\s*(\d+)\s+(\d+)\s+(PASS|FAIL)\s+([A-Z0-9_]+)\s+(\d+)\(\s*([\d.]+)\)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/);
+        if (actualFormatMatch) {
+            const [, softBin, hardBin, result, description, total, percentage, site1, site2, site3, site4] = actualFormatMatch;
+            
+            console.log(`Parsed actual format: ${description} = ${result} (${total})`);
+            
+            return {
+                softBin: parseInt(softBin, 10),
+                hardBin: parseInt(hardBin, 10),
+                result,
+                description,
+                total: parseInt(total, 10),
+                percentage: parseFloat(percentage),
+                site1: parseInt(site1, 10),
+                site2: parseInt(site2, 10),
+                site3: parseInt(site3, 10),
+                site4: parseInt(site4, 10),
+                sites: {
+                    1: parseInt(site1, 10),
+                    2: parseInt(site2, 10),
+                    3: parseInt(site3, 10),
+                    4: parseInt(site4, 10)
+                },
+                totalSites: parseInt(site1, 10) + parseInt(site2, 10) + parseInt(site3, 10) + parseInt(site4, 10)
+            };
+        }
+        
+        // Pattern 1: Standard format "1 1 FAIL Test1 100 10.0 50 30 10 10"
+        const standardMatch = trimmedLine.match(/^(\d+)\s+(\d+)\s+(PASS|FAIL)\s+(\w+)\s+(\d+)\s+([\d.]+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)$/);
+        if (standardMatch) {
+            const [, softBin, hardBin, result, description, total, percentage, site1, site2, site3, site4] = standardMatch;
+            
+            console.log(`Parsed standard format: ${description} = ${result}`);
+            
+            return {
+                softBin: parseInt(softBin, 10),
+                hardBin: parseInt(hardBin, 10),
+                result,
+                description,
+                total: parseInt(total, 10),
+                percentage: parseFloat(percentage),
+                site1: parseInt(site1, 10),
+                site2: parseInt(site2, 10),
+                site3: parseInt(site3, 10),
+                site4: parseInt(site4, 10),
+                sites: {
+                    1: parseInt(site1, 10),
+                    2: parseInt(site2, 10),
+                    3: parseInt(site3, 10),
+                    4: parseInt(site4, 10)
+                },
+                totalSites: parseInt(site1, 10) + parseInt(site2, 10) + parseInt(site3, 10) + parseInt(site4, 10)
+            };
+        }
+        
+        // Pattern 2: Simple format "Test1: PASS 950 FAIL 50 Total 1000"
+        const simpleMatch = trimmedLine.match(/^(\w+):\s+PASS\s+(\d+)\s+FAIL\s+(\d+)\s+Total\s+(\d+)$/);
+        if (simpleMatch) {
+            const [, description, passCount, failCount, total] = simpleMatch;
+            const pass = parseInt(passCount, 10);
+            const fail = parseInt(failCount, 10);
+            const totalCount = parseInt(total, 10);
+            
+            console.log(`Parsed simple format: description=${description}, pass=${pass}, fail=${fail}, total=${totalCount}`);
+            
+            return {
+                softBin: 1,
+                hardBin: 1,
+                result: fail > 0 ? 'FAIL' : 'PASS',
+                description,
+                total: totalCount,
+                percentage: (totalCount / 1000) * 100, // Assuming 1000 total devices
+                site1: Math.floor(pass / 4),
+                site2: Math.floor(pass / 4),
+                site3: Math.floor(pass / 4),
+                site4: pass - (Math.floor(pass / 4) * 3),
+                sites: {
+                    1: Math.floor(pass / 4),
+                    2: Math.floor(pass / 4),
+                    3: Math.floor(pass / 4),
+                    4: pass - (Math.floor(pass / 4) * 3)
+                },
+                totalSites: pass
+            };
+        }
+        
+        // Pattern 3: Yield format "Yield: 94.0%"
+        const yieldMatch = trimmedLine.match(/^Yield:\s*([\d.]+)%?$/);
+        if (yieldMatch) {
+            const yieldPercent = parseFloat(yieldMatch[1]);
+            console.log(`Found yield: ${yieldPercent}%`);
+            return null; // This is summary data, not test result
+        }
+        
+        // Pattern 4: Generic test result with numbers "Test1 100 50 30 10 10"
+        const genericMatch = trimmedLine.match(/^(\w+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)$/);
+        if (genericMatch) {
+            const [, description, total, site1, site2, site3, site4] = genericMatch;
+            const totalCount = parseInt(total, 10);
+            const site1Count = parseInt(site1, 10);
+            const site2Count = parseInt(site2, 10);
+            const site3Count = parseInt(site3, 10);
+            const site4Count = parseInt(site4, 10);
+            
+            console.log(`Parsed generic format: ${description} = ${totalCount} total`);
+            
+            return {
+                softBin: 1,
+                hardBin: 1,
+                result: totalCount > 0 ? 'PASS' : 'FAIL',
+                description,
+                total: totalCount,
+                percentage: (totalCount / 1000) * 100,
+                site1: site1Count,
+                site2: site2Count,
+                site3: site3Count,
+                site4: site4Count,
+                sites: {
+                    1: site1Count,
+                    2: site2Count,
+                    3: site3Count,
+                    4: site4Count
+                },
+                totalSites: site1Count + site2Count + site3Count + site4Count
+            };
+        }
+        
+        // Pattern 5: Test with PASS/FAIL indicator "Test1 PASS 100"
+        const passFailMatch = trimmedLine.match(/^(\w+)\s+(PASS|FAIL)\s+(\d+)$/);
+        if (passFailMatch) {
+            const [, description, result, total] = passFailMatch;
+            const totalCount = parseInt(total, 10);
+            
+            console.log(`Parsed PASS/FAIL format: ${description} = ${result} (${totalCount})`);
+            
+            return {
+                softBin: 1,
+                hardBin: 1,
+                result,
+                description,
+                total: totalCount,
+                percentage: (totalCount / 1000) * 100,
+                site1: Math.floor(totalCount / 4),
+                site2: Math.floor(totalCount / 4),
+                site3: Math.floor(totalCount / 4),
+                site4: totalCount - (Math.floor(totalCount / 4) * 3),
+                sites: {
+                    1: Math.floor(totalCount / 4),
+                    2: Math.floor(totalCount / 4),
+                    3: Math.floor(totalCount / 4),
+                    4: totalCount - (Math.floor(totalCount / 4) * 3)
+                },
+                totalSites: totalCount
+            };
+        }
+        
+        // Pattern 6: Any line with numbers that might be test data
+        const numberMatch = trimmedLine.match(/^(\w+)\s+(\d+)/);
+        if (numberMatch && !trimmedLine.includes('*') && !trimmedLine.includes('Total') && !trimmedLine.includes('Yield')) {
+            const [, description, total] = numberMatch;
+            const totalCount = parseInt(total, 10);
+            
+            // Only create test result if it looks like a test (not summary data)
+            if (totalCount > 0 && totalCount < 10000) { // Reasonable range for test results
+                console.log(`Parsed number format: ${description} = ${totalCount}`);
+                
+                return {
+                    softBin: 1,
+                    hardBin: 1,
+                    result: 'PASS',
+                    description,
+                    total: totalCount,
+                    percentage: (totalCount / 1000) * 100,
+                    site1: Math.floor(totalCount / 4),
+                    site2: Math.floor(totalCount / 4),
+                    site3: Math.floor(totalCount / 4),
+                    site4: totalCount - (Math.floor(totalCount / 4) * 3),
+                    sites: {
+                        1: Math.floor(totalCount / 4),
+                        2: Math.floor(totalCount / 4),
+                        3: Math.floor(totalCount / 4),
+                        4: totalCount - (Math.floor(totalCount / 4) * 3)
+                    },
+                    totalSites: totalCount
+                };
+            }
+        }
+        
+        // Only log unmatched lines that look like they might be test data
+        if (trimmedLine.match(/^\w+\s+\d+/) || trimmedLine.match(/^\d+\s+\d+/)) {
+            console.log(`No pattern matched for line: "${trimmedLine}"`);
+        }
+        return null;
+    }
+
+    /**
+     * Update site results
+     * @param {Object} testResult - Test result object
+     * @param {Object} siteResults - Site results object
+     */
+    updateSiteResults(testResult, siteResults) {
+        if (testResult.site1 > 0) siteResults.Site1.push(testResult);
+        if (testResult.site2 > 0) siteResults.Site2.push(testResult);
+        if (testResult.site3 > 0) siteResults.Site3.push(testResult);
+        if (testResult.site4 > 0) siteResults.Site4.push(testResult);
+    }
+
+    /**
+     * Parse summary section
+     * @param {Array} lines - File lines
+     * @param {number} startIndex - Start index
+     * @returns {Object} Summary data
+     */
+    parseSummarySection(lines, startIndex) {
+        const summary = {};
+        console.log(`Parsing summary section starting from line ${startIndex}`);
+        
+        // First pass: look for summary data throughout the file
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            
+            // Pattern 1: Standard format "* GOOD    940( 94.0)"
+            if (line.includes('* GOOD')) {
+                const match = line.match(/\* GOOD\s+(\d+)\(\s*([\d.]+)\)/);
+                if (match) {
+                    summary.goodCount = parseInt(match[1], 10);
+                    summary.goodPercentage = parseFloat(match[2]);
+                    console.log(`Found GOOD: ${summary.goodCount} (${summary.goodPercentage}%)`);
+                }
+            } else if (line.includes('* FAIL')) {
+                const match = line.match(/\* FAIL\s+(\d+)\(\s*([\d.]+)\)/);
+                if (match) {
+                    summary.failCount = parseInt(match[1], 10);
+                    summary.failPercentage = parseFloat(match[2]);
+                    console.log(`Found FAIL: ${summary.failCount} (${summary.failPercentage}%)`);
+                }
+            } else if (line.includes('* TOTAL')) {
+                const match = line.match(/\* TOTAL\s+(\d+)/);
+                if (match) {
+                    summary.totalCount = parseInt(match[1], 10);
+                    console.log(`Found TOTAL: ${summary.totalCount}`);
+                }
+            }
+            
+            // Pattern 2: Simple format "Total Devices: 1000"
+            else if (line.includes('Total Devices:')) {
+                const match = line.match(/Total Devices:\s*(\d+)/);
+                if (match) {
+                    summary.totalCount = parseInt(match[1], 10);
+                    console.log(`Found Total Devices: ${summary.totalCount}`);
+                }
+            } else if (line.includes('Good Devices:')) {
+                const match = line.match(/Good Devices:\s*(\d+)/);
+                if (match) {
+                    summary.goodCount = parseInt(match[1], 10);
+                    console.log(`Found Good Devices: ${summary.goodCount}`);
+                }
+            } else if (line.includes('Failed Devices:')) {
+                const match = line.match(/Failed Devices:\s*(\d+)/);
+                if (match) {
+                    summary.failCount = parseInt(match[1], 10);
+                    console.log(`Found Failed Devices: ${summary.failCount}`);
+                }
+            } else if (line.includes('Yield:')) {
+                const match = line.match(/Yield:\s*([\d.]+)%?/);
+                if (match) {
+                    summary.goodPercentage = parseFloat(match[1]);
+                    console.log(`Found Yield: ${summary.goodPercentage}%`);
+                }
+            }
+            
+            // Pattern 3: Alternative formats
+            else if (line.includes('PASS') && line.includes('FAIL') && line.includes('Total')) {
+                // Format like "PASS 950 FAIL 50 Total 1000"
+                const passMatch = line.match(/PASS\s+(\d+)/);
+                const failMatch = line.match(/FAIL\s+(\d+)/);
+                const totalMatch = line.match(/Total\s+(\d+)/);
+                
+                if (passMatch && failMatch && totalMatch) {
+                    summary.goodCount = parseInt(passMatch[1], 10);
+                    summary.failCount = parseInt(failMatch[1], 10);
+                    summary.totalCount = parseInt(totalMatch[1], 10);
+                    summary.goodPercentage = (summary.goodCount / summary.totalCount) * 100;
+                    summary.failPercentage = (summary.failCount / summary.totalCount) * 100;
+                    console.log(`Found PASS/FAIL/Total: ${summary.goodCount}/${summary.failCount}/${summary.totalCount}`);
+                }
+            }
+            
+            // Pattern 4: Enhanced fail count detection
+            else if (line.includes('FAIL') || line.includes('Fail') || line.includes('fail')) {
+                // Look for fail count in various formats
+                const failPatterns = [
+                    /FAIL\s*(\d+)/i,
+                    /Fail\s*(\d+)/i,
+                    /fail\s*(\d+)/i,
+                    /(\d+)\s*FAIL/i,
+                    /(\d+)\s*Fail/i,
+                    /(\d+)\s*fail/i
+                ];
+                
+                for (const pattern of failPatterns) {
+                    const match = line.match(pattern);
+                    if (match && !summary.failCount) {
+                        summary.failCount = parseInt(match[1], 10);
+                        console.log(`Found FAIL count: ${summary.failCount}`);
+                        break;
+                    }
+                }
+            }
+            
+            // Pattern 5: Look for numbers that might be fail counts
+            else if (line.includes('Total') && line.includes('%')) {
+                // Extract numbers and percentages from lines like "Total: 840 (95.6%)"
+                const numbers = line.match(/\d+/g);
+                const percentages = line.match(/(\d+\.?\d*)%/g);
+                
+                if (numbers && numbers.length >= 2 && percentages && percentages.length >= 1) {
+                    const total = parseInt(numbers[0], 10);
+                    const percentage = parseFloat(percentages[0]);
+                    
+                    if (!summary.totalCount) summary.totalCount = total;
+                    if (!summary.goodPercentage) summary.goodPercentage = percentage;
+                    
+                    // Calculate fail count from percentage
+                    if (summary.totalCount && summary.goodPercentage && !summary.failCount) {
+                        const goodCount = Math.round((summary.goodPercentage / 100) * summary.totalCount);
+                        summary.goodCount = goodCount;
+                        summary.failCount = summary.totalCount - goodCount;
+                        console.log(`Calculated from percentage: Good=${goodCount}, Fail=${summary.failCount}`);
+                    }
+                }
+            }
+        }
+        
+        // Data validation and normalization
+        this.validateAndNormalizeSummary(summary);
+        
+        console.log(`Final summary:`, summary);
+        return summary;
+    }
+
+    /**
+     * Validate and normalize summary data
+     * @param {Object} summary - Summary object to validate
+     */
+    validateAndNormalizeSummary(summary) {
+        // Ensure all values are positive
+        if (summary.goodCount < 0) summary.goodCount = 0;
+        if (summary.failCount < 0) summary.failCount = 0;
+        if (summary.totalCount < 0) summary.totalCount = 0;
+        
+        // Ensure percentages are within valid range (0-100)
+        if (summary.goodPercentage < 0) summary.goodPercentage = 0;
+        if (summary.goodPercentage > 100) summary.goodPercentage = 100;
+        if (summary.failPercentage < 0) summary.failPercentage = 0;
+        if (summary.failPercentage > 100) summary.failPercentage = 100;
+        
+        // Calculate missing values if possible
+        if (summary.totalCount && summary.goodCount && !summary.failCount) {
+            summary.failCount = Math.max(0, summary.totalCount - summary.goodCount);
+            summary.failPercentage = (summary.failCount / summary.totalCount) * 100;
+        }
+        
+        if (summary.totalCount && summary.failCount && !summary.goodCount) {
+            summary.goodCount = Math.max(0, summary.totalCount - summary.failCount);
+            summary.goodPercentage = (summary.goodCount / summary.totalCount) * 100;
+        }
+        
+        if (summary.totalCount && summary.goodCount && !summary.goodPercentage) {
+            summary.goodPercentage = (summary.goodCount / summary.totalCount) * 100;
+        }
+        
+        if (summary.totalCount && summary.failCount && !summary.failPercentage) {
+            summary.failPercentage = (summary.failCount / summary.totalCount) * 100;
+        }
+        
+        // Ensure consistency between counts and percentages
+        if (summary.totalCount && summary.goodCount && summary.failCount) {
+            const calculatedTotal = summary.goodCount + summary.failCount;
+            if (Math.abs(calculatedTotal - summary.totalCount) > 1) {
+                console.warn(`Total count mismatch: ${summary.totalCount} vs ${calculatedTotal}`);
+                // Use the calculated total if there's a significant mismatch
+                if (Math.abs(calculatedTotal - summary.totalCount) > summary.totalCount * 0.1) {
+                    summary.totalCount = calculatedTotal;
+                }
+            }
+        }
+        
+        // Set yield percentage as good percentage for consistency
+        if (summary.goodPercentage !== undefined) {
+            summary.yieldPercent = summary.goodPercentage;
+        }
+        
+        // Final validation
+        if (summary.totalCount === 0) {
+            console.warn('Total count is 0, setting default values');
+            summary.totalCount = 1;
+            summary.goodCount = 1;
+            summary.failCount = 0;
+            summary.goodPercentage = 100;
+            summary.failPercentage = 0;
+            summary.yieldPercent = 100;
+        }
+    }
+
+    /**
+     * Parse hardbin section
+     * @param {Array} lines - File lines
+     * @param {number} startIndex - Start index
+     * @returns {Object} Hardbin data
+     */
+    parseHardbinSection(lines, startIndex) {
+        const hardbin = {};
+        
+        for (let i = startIndex; i < lines.length; i++) {
+            const line = lines[i];
+            if (line.includes('* HARDBIN')) {
+                // Parse hardbin distribution
+                const binMatch = line.match(/\* HARDBIN\s+(.+)/);
+                if (binMatch) {
+                    const binData = binMatch[1].trim().split(/\s+/);
+                    for (let j = 0; j < binData.length; j += 2) {
+                        const binNumber = binData[j];
+                        const count = parseInt(binData[j + 1], 10);
+                        if (!isNaN(count)) {
+                            hardbin[`Bin${binNumber}`] = count;
+                        }
+                    }
+                }
+                break;
+            }
+        }
+        
+        return hardbin;
+    }
+} 
+
+// ===== Main Application Script =====
+
+        // Import modules
+        window.TestAnalysis = TestAnalysis;
+        window.BinningAnalysis = BinningAnalysis;
+
+        // Global variables
+        let stdfHandler;
+        let allData = [];
+        let ui;
+
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('=== Initializing Wafer Map Dashboard v4.1 ===');
+            
+            // Initialize STDFFileHandler
+            if (typeof STDFFileHandler !== 'undefined') {
+                stdfHandler = new STDFFileHandler();
+                console.log('✅ STDFFileHandler initialized successfully');
+            } else {
+                console.error('❌ STDFFileHandler failed to load');
+                return;
+            }
+
+            // Initialize UI
+            ui = new UI();
+            console.log('✅ UI initialized successfully');
+
+            // Initialize global functions for backward compatibility
+            window.handleFileUpload = handleFileUpload;
+            window.selectLot = (lotNumber) => ui.selectLot(lotNumber);
+            window.getAggregatedAnalytics = () => Analytics.getAggregatedAnalytics(allData);
+            window.generateExportData = generateExportData;
+
+            console.log('✅ Application initialization complete');
+
+            // Initialize tab switching
+            initializeTabSwitching();
+        });
+
+        // File upload handler
+        async function handleFileUpload(files) {
+            console.log('=== File Upload Handler ===');
+            console.log('Files to process:', files.length);
+
+            // Clear previous data
+            allData = [];
+            
+            // Show loading state
+            ui.showLoadingState();
+
+            try {
+                // Process each file
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    console.log(`Processing file ${i + 1}/${files.length}: ${file.name}`);
+                    
+                    try {
+                        const data = await stdfHandler.loadFile(file);
+                        console.log(`File ${file.name} parse result:`, data);
+                        
+                        if (data && data.success) {
+                            allData.push(data);
+                            console.log(`File ${file.name} processed successfully`);
+                        } else {
+                            console.error(`Failed to process file: ${file.name} - ${data?.error || 'no data returned'}`);
+                        }
+                    } catch (fileError) {
+                        console.error(`Error processing file ${file.name}:`, fileError);
+                    }
+                }
+
+                console.log('All files processed. Total data entries:', allData.length);
+                
+                // Display results
+                if (allData.length > 0) {
+                    console.log('Displaying results...');
+                    
+                    try {
+                        // Get aggregated analytics
+                        const aggregatedAnalytics = Analytics.getAggregatedAnalytics(allData);
+                        console.log('Aggregated analytics:', aggregatedAnalytics);
+                        
+                        // Display results using UI module
+                        ui.displayMultiFileSummary(aggregatedAnalytics);
+                        
+                        // Transform data for analysis modules
+                        const transformedData = transformDataForAnalysis(allData);
+                        
+                        // Initialize new analysis modules
+                        const testAnalysis = new TestAnalysis();
+                        const binningAnalysis = new BinningAnalysis();
+                        
+                        // Load data into analysis modules
+                        testAnalysis.loadTestData(transformedData);
+                        binningAnalysis.loadBinningData(transformedData);
+                        
+                        // Populate device filters
+                        populateDeviceFilters(transformedData);
+                        
+                        // Make modules globally accessible
+                        window.testAnalysis = testAnalysis;
+                        window.binningAnalysis = binningAnalysis;
+                        
+                        console.log('✅ Test Analysis and Binning Analysis modules initialized');
+                        console.log('All displays completed successfully');
+                    } catch (displayError) {
+                        console.error('Error in display functions:', displayError);
+                        ui.showError(`Error displaying data: ${displayError.message}`);
+                    }
+                } else {
+                    console.error('No valid data found in uploaded files');
+                    ui.showError('No valid data found in uploaded files. Check console for details.');
+                }
+            } catch (e) {
+                console.error('Error processing files:', e);
+                ui.showError(`Error processing files: ${e.message}`);
+            } finally {
+                // Hide loading state
+                ui.hideLoadingState();
+            }
+        }
+
+        // Export data generator
+        function generateExportData(type) {
+            const aggregatedAnalytics = Analytics.getAggregatedAnalytics(allData);
+            const sequences = aggregatedAnalytics.testSequences || {};
+            
+            switch (type) {
+                case 'summary':
+                    return generateSummaryData(aggregatedAnalytics, sequences);
+                case 'details':
+                    return generateDetailsData(aggregatedAnalytics, sequences);
+                case 'comparison':
+                    return generateComparisonData(aggregatedAnalytics, sequences);
+                default:
+                    return [];
+            }
+        }
+
+        function generateSummaryData(aggregatedAnalytics, sequences) {
+            const summaryData = [];
+            summaryData.push(['Wafer Test Summary Report', '', '', '']);
+            summaryData.push(['Generated:', new Date().toLocaleString(), '', '']);
+            summaryData.push(['', '', '', '']);
+            
+            // Add summary statistics
+            summaryData.push(['Summary Statistics', '', '', '']);
+            summaryData.push(['Total Files', aggregatedAnalytics.totalFiles, '', '']);
+            summaryData.push(['Total Lots', Object.keys(sequences).length, '', '']);
+            summaryData.push(['Average Yield', aggregatedAnalytics.overallYield.toFixed(2) + '%', '', '']);
+            summaryData.push(['', '', '', '']);
+            
+            // Add lot details
+            summaryData.push(['Lot Details', '', '', '']);
+            summaryData.push(['Lot Number', 'Device', 'Lot Size', 'Yield (%)', 'Good', 'Fail']);
+            
+            Object.entries(sequences).forEach(([lotNumber, sequence]) => {
+                summaryData.push([
+                    lotNumber,
+                    sequence.device || 'N/A',
+                    sequence.totalInput,
+                    sequence.finalYield.toFixed(2) + '%',
+                    sequence.totalPass,
+                    sequence.totalFail
+                ]);
+            });
+            
+            return summaryData;
+        }
+
+        function generateDetailsData(aggregatedAnalytics, sequences) {
+            const detailsData = [];
+            detailsData.push(['Detailed Test Results Report', '', '', '', '', '', '']);
+            detailsData.push(['Generated:', new Date().toLocaleString(), '', '', '', '', '']);
+            detailsData.push(['', '', '', '', '', '', '']);
+            
+            // Add lot details
+            Object.entries(sequences).forEach(([lotNumber, sequence]) => {
+                detailsData.push(['', '', '', '', '', '', '']);
+                detailsData.push([`Lot: ${lotNumber}`, '', '', '', '', '', '']);
+                detailsData.push(['Device', sequence.device || 'N/A', '', '', '', '', '']);
+                detailsData.push(['Lot Size', sequence.totalInput, '', '', '', '', '']);
+                detailsData.push(['Final Yield', sequence.finalYield.toFixed(2) + '%', '', '', '', '', '']);
+                detailsData.push(['Total Pass', sequence.totalPass, '', '', '', '', '']);
+                detailsData.push(['Final Fail', sequence.totalFail, '', '', '', '', '']);
+            });
+            
+            return detailsData;
+        }
+
+        function generateComparisonData(aggregatedAnalytics, sequences) {
+            const comparisonData = [];
+            comparisonData.push(['Lot Comparison Report', '', '', '', '', '', '']);
+            comparisonData.push(['Generated:', new Date().toLocaleString(), '', '', '', '', '']);
+            comparisonData.push(['', '', '', '', '', '', '']);
+            
+            // Add comparison table
+            comparisonData.push(['Lot Number', 'Device', 'Lot Size', 'Yield (%)', 'Good', 'Fail', 'Status']);
+            
+            Object.entries(sequences).forEach(([lotNumber, sequence]) => {
+                const yieldStatus = sequence.finalYield >= 95 ? 'Excellent' : 
+                                   sequence.finalYield >= 90 ? 'Good' : 
+                                   sequence.finalYield >= 80 ? 'Fair' : 'Poor';
+                
+                comparisonData.push([
+                    lotNumber,
+                    sequence.device || 'N/A',
+                    sequence.totalInput,
+                    sequence.finalYield.toFixed(2) + '%',
+                    sequence.totalPass,
+                    sequence.totalFail,
+                    yieldStatus
+                ]);
+            });
+            
+            return comparisonData;
+        }
+
+        // Transform data for analysis modules
+        function transformDataForAnalysis(allData) {
+            const transformedData = [];
+            
+            allData.forEach(fileData => {
+                if (fileData.success && fileData.data) {
+                    const lotData = {
+                        lotNumber: fileData.data.lotInfo?.lotNumber || 'Unknown',
+                        device: fileData.data.lotInfo?.device || 'Unknown',
+                        testDate: fileData.data.lotInfo?.testDate || new Date().toISOString(),
+                        operator: fileData.data.lotInfo?.operator || 'Unknown',
+                        testResults: []
+                    };
+                    
+                    // Transform test results
+                    if (fileData.data.testResults && Array.isArray(fileData.data.testResults)) {
+                        fileData.data.testResults.forEach(test => {
+                            const testResult = {
+                                test: test.test || 'Unknown Test',
+                                result: test.result || 'UNKNOWN',
+                                time: test.time || 0,
+                                site1: test.site1 || 0,
+                                site2: test.site2 || 0,
+                                site3: test.site3 || 0,
+                                site4: test.site4 || 0,
+                                total: test.total || 0
+                            };
+                            lotData.testResults.push(testResult);
+                        });
+                    }
+                    
+                    transformedData.push(lotData);
+                }
+            });
+            
+            console.log('Transformed data for analysis:', transformedData);
+            return transformedData;
+        }
+
+        // Populate device filters
+        function populateDeviceFilters(transformedData) {
+            const devices = [...new Set(transformedData.map(lot => lot.device))].filter(device => device !== 'Unknown');
+            
+            // Populate Test Analysis device filter
+            const testDeviceFilter = document.getElementById('device-filter');
+            if (testDeviceFilter) {
+                testDeviceFilter.innerHTML = '<option value="all">All Devices</option>';
+                devices.forEach(device => {
+                    const option = document.createElement('option');
+                    option.value = device;
+                    option.textContent = device;
+                    testDeviceFilter.appendChild(option);
+                });
+            }
+            
+            console.log('Device filters populated:', devices);
+        }
+
+        // Tab switching logic
+        function initializeTabSwitching() {
+            const tabButtons = document.querySelectorAll('.main-tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetTab = this.getAttribute('data-tab');
+                    
+                    // Remove active class from all tabs
+                    tabButtons.forEach(btn => {
+                        btn.classList.remove('active');
+                        btn.classList.remove('border-blue-500');
+                        btn.classList.remove('text-blue-600');
+                        btn.classList.add('border-transparent');
+                        btn.classList.add('text-gray-500');
+                    });
+                    
+                    // Add active class to clicked tab
+                    this.classList.add('active');
+                    this.classList.add('border-blue-500');
+                    this.classList.add('text-blue-600');
+                    this.classList.remove('border-transparent');
+                    this.classList.remove('text-gray-500');
+                    
+                    // Hide all tab contents
+                    tabContents.forEach(content => {
+                        content.classList.add('hidden');
+                    });
+                    
+                    // Show target tab content
+                    const targetContent = document.getElementById(`${targetTab}-tab`);
+                    if (targetContent) {
+                        targetContent.classList.remove('hidden');
+                        
+                        // Trigger data refresh for analysis tabs
+                        if (targetTab === 'test-analysis' && window.testAnalysis) {
+                            console.log('Refreshing Test Analysis data...');
+                            window.testAnalysis.refreshAnalysis();
+                        } else if (targetTab === 'binning-analysis' && window.binningAnalysis) {
+                            console.log('Refreshing Binning Analysis data...');
+                            window.binningAnalysis.refreshAnalysis();
+                        }
+                    }
+                });
+            });
+        }
+
+        // Debug functions
+        window.debugParsedData = function() {
+            console.log('=== Debug Parsed Data ===');
+            console.log('Total files loaded:', allData.length);
+            
+            allData.forEach((fileData, index) => {
+                console.log(`\n--- File ${index + 1}: ${fileData.fileName} ---`);
+                console.log('File success:', fileData.success);
+                
+                if (fileData.success && fileData.data) {
+                    console.log('Lot Info:', fileData.data.lotInfo);
+                    console.log('Summary:', fileData.data.summary);
+                    console.log('Analytics:', fileData.data.analytics);
+                    console.log('Test Results Count:', fileData.data.testResults ? fileData.data.testResults.length : 0);
+                } else {
+                    console.log('File error:', fileData.error);
+                }
+            });
+        };
+
+        window.debugSequences = function() {
+            console.log('=== Debug Test Sequences ===');
+            const aggregatedAnalytics = Analytics.getAggregatedAnalytics(allData);
+            console.log('Test Sequences:', aggregatedAnalytics.testSequences);
+        };
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // File upload event listener
+            const fileInput = document.getElementById('final-test-upload');
+            if (fileInput) {
+                fileInput.addEventListener('change', function(e) {
+                    const files = Array.from(e.target.files);
+                    if (files.length > 0) {
+                        handleFileUpload(files);
+                    }
+                });
+            }
+
+            // Export buttons
+            const exportSummaryBtn = document.getElementById('export-summary');
+            const exportDetailsBtn = document.getElementById('export-details');
+            const exportComparisonBtn = document.getElementById('export-comparison');
+
+            if (exportSummaryBtn) {
+                exportSummaryBtn.addEventListener('click', function() {
+                    const data = generateExportData('summary');
+                    ui.exportToExcel(data, 'wafer-test-summary');
+                });
+            }
+
+            if (exportDetailsBtn) {
+                exportDetailsBtn.addEventListener('click', function() {
+                    const data = generateExportData('details');
+                    ui.exportToExcel(data, 'wafer-test-details');
+                });
+            }
+
+            if (exportComparisonBtn) {
+                exportComparisonBtn.addEventListener('click', function() {
+                    const data = generateExportData('comparison');
+                    ui.exportToExcel(data, 'wafer-test-comparison');
+                });
+            }
+
+            // Debug buttons
+            const debugBtn = document.getElementById('debugBtn');
+            const debugDataBtn = document.getElementById('debugDataBtn');
+
+            if (debugBtn) {
+                debugBtn.addEventListener('click', debugSequences);
+            }
+
+            if (debugDataBtn) {
+                debugDataBtn.addEventListener('click', debugParsedData);
+            }
+        });
+    
+
+</script>
+</body>
+</html>

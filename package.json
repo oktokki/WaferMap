@@ -1,0 +1,26 @@
+{
+  "name": "wafermap",
+  "version": "1.0.0",
+  "description": "반도체 품질 관리 통합 대시보드의 리팩토링된 버전입니다.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack --mode production",
+    "dev": "webpack --mode development --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oktokki/WaferMap.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/oktokki/WaferMap/issues"
+  },
+  "homepage": "https://github.com/oktokki/WaferMap#readme",
+  "devDependencies": {
+    "webpack": "^5.99.9",
+    "webpack-cli": "^6.0.1"
+  }
+}

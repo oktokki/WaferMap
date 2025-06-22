@@ -1,0 +1,15 @@
+{
+  "cursor.chat.autoLoadProjectFiles": true,
+  "cursor.chat.autoLoadProjectContext": true,
+  "cursor.chat.includeProjectFiles": [
+    ".cursorrules",
+    "CODING_HISTORY.md",
+    "AI_CODING_CHECKLIST.md",
+    "README.md"
+  ],
+  "cursor.chat.contextFiles": [
+    ".cursorrules",
+    "CODING_HISTORY.md",
+    "AI_CODING_CHECKLIST.md"
+  ]
+} 

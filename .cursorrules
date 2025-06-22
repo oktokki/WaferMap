@@ -1,0 +1,53 @@
+# Cursor AI 프로젝트 지침
+# 이 파일은 모든 새로운 채팅 세션에서 자동으로 로드됩니다.
+
+## 프로젝트 개요
+이 프로젝트는 반도체 웨이퍼 맵 데이터 분석 대시보드입니다.
+- HTML5 + JavaScript ES6 모듈 시스템 사용
+- Tailwind CSS 프레임워크 사용
+- STDF 파일 및 요약 파일 파싱 기능
+
+## 필수 개발 환경
+- ES6 모듈 사용으로 인해 HTTP 서버 필요
+- Python HTTP 서버: `python -m http.server 8000`
+- 또는 Node.js: `npx http-server`
+- 또는 VS Code Live Server 확장
+
+## 주요 이슈 패턴 (반복 발생)
+1. **Strict Mode 예약어 충돌**: `yield`, `class`, `function` 변수명 사용 금지
+2. **모듈 Import/Export**: 모든 모듈에 `export class` 필수
+3. **이벤트 리스너**: HTML 요소와 JavaScript 연결 확인
+4. **HTTP 서버**: ES6 모듈 사용 시 반드시 HTTP 서버 필요
+
+## 코드 수정 시 필수 체크리스트
+- [ ] `CODING_HISTORY.md`에서 유사 이슈 패턴 확인
+- [ ] `AI_CODING_CHECKLIST.md` 체크리스트 준수
+- [ ] 변수명에서 JavaScript 예약어 사용 금지
+- [ ] 모듈 export/import 구문 확인
+- [ ] HTTP 서버 실행 상태 확인
+- [ ] 브라우저 콘솔 오류 확인
+
+## 파일 구조
+```
+WaferMap/
+├── js/
+│   ├── modules/          # ES6 모듈들
+│   ├── utils/           # 유틸리티 함수들
+│   └── STDFFileHandler.js
+├── css/
+│   └── dashboard.css
+├── CODING_HISTORY.md    # 이슈 히스토리
+├── AI_CODING_CHECKLIST.md # 품질 체크리스트
+└── wafer map dashboard v4.1.html
+```
+
+## 코딩 규칙
+1. 모든 JavaScript 모듈은 ES6 `export class` 사용
+2. 변수명에서 예약어 사용 금지 (`yield` → `yieldValue`)
+3. 이벤트 리스너 연결 확인
+4. HTTP 서버 환경에서 테스트
+
+## 자동 업데이트 규칙
+- 코드 수정 후 반드시 `CODING_HISTORY.md` 업데이트
+- 새로운 이슈 패턴 발견 시 `AI_CODING_CHECKLIST.md` 업데이트
+- 이슈 해결 후 재발 방지책 문서화 

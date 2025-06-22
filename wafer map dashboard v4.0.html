@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wafer Map Dashboard v4.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #f1f5f9; }
+        .chart-container { position: relative; width: 100%; height: 250px; }
+        .main-tab.active { border-color: #3b82f6; color: #3b82f6; background-color: white; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Multi-file summary styles */
+        .summary-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .summary-card {
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .summary-card h4 {
+            margin: 0 0 0.5rem 0;
+            color: #495057;
+            font-size: 0.9rem;
+        }
+
+        .summary-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #007bff;
+            margin: 0;
+        }
+
+        /* Test sequences styles */
+        .sequences-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .sequence-card {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1.5rem;
+            background: #f8f9fa;
+        }
+
+        .sequence-card.has-retests {
+            border-left: 4px solid #28a745;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e8f5e8 100%);
+        }
+
+        .sequence-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .sequence-header h4 {
+            margin: 0;
+            color: #495057;
+            font-size: 1.2rem;
+        }
+
+        .device-name {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .retest-badge {
+            background: #28a745;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .sequence-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+
+        .stat label {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .stat span {
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .yield-value {
+            color: #28a745 !important;
+        }
+
+        /* Test flow styles */
+        .test-flow h5 {
+            margin: 0 0 1rem 0;
+            color: #495057;
+            font-size: 1rem;
+        }
+
+        .test-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .test-step {
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 1rem;
+            background: white;
+            position: relative;
+        }
+
+        .test-step.primary {
+            border-left: 4px solid #007bff;
+        }
+
+        .test-step.retest {
+            border-left: 4px solid #ffc107;
+        }
+
+        .test-step.final {
+            border-left: 4px solid #28a745;
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .step-type {
+            background: #007bff;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .test-step.retest .step-type {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .test-step.final .step-type {
+            background: #28a745;
+        }
+
+        .step-name {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .step-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 0.5rem;
+        }
+
+        .step-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .step-stat label {
+            color: #6c757d;
+        }
+
+        .step-stat .pass-count {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .step-stat .fail-count {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .step-stat .yield {
+            color: #007bff;
+            font-weight: bold;
+        }
+
+        .flow-arrow {
+            text-align: center;
+            font-size: 1.5rem;
+            color: #6c757d;
+            margin: 0.5rem 0;
+        }
+
+        /* Lot comparison styles */
+        .lot-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+
+        .comparison-chart {
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+
+        .comparison-table {
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+            overflow: hidden;
+        }
+
+        .comparison-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .comparison-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .comparison-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .yield-cell {
+            font-weight: bold;
+            color: #28a745;
+        }
+
+        .pass-cell {
+            font-weight: bold;
+            color: #28a745;
+        }
+
+        .fail-cell {
+            font-weight: bold;
+            color: #dc3545;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .lot-comparison {
+                grid-template-columns: 1fr;
+            }
+            
+            .sequence-stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .step-details {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+    <div id="dashboard-page" class="min-h-screen">
+        <header class="bg-white px-6 py-3 border-b flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900">Wafer Map Dashboard v4.0</h1>
+                <p class="text-sm text-slate-500">반도체 품질 관리 통합 대시보드</p>
+            </div>
+        </header>
+        <nav id="main-tabs" class="flex border-b bg-slate-50">
+            <button data-tab="summary" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300 active">Summary</button>
+            <button data-tab="map-analysis" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">MAP분석</button>
+            <button data-tab="risk-assessment" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">RISK평가</button>
+            <button data-tab="final-test" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">Final Test</button>
+        </nav>
+        <main class="p-6">
+            <!-- Summary Tab (reuse v3.0) -->
+            <div id="summary-tab" class="tab-content">
+                <p class="text-slate-600">(기존 Summary 탭 내용...)</p>
+            </div>
+            <!-- MAP Analysis Tab (reuse v3.0) -->
+            <div id="map-analysis-tab" class="tab-content hidden">
+                <p class="text-slate-600">(기존 MAP 분석 탭 내용...)</p>
+            </div>
+            <!-- RISK Assessment Tab (reuse v3.0) -->
+            <div id="risk-assessment-tab" class="tab-content hidden">
+                <p class="text-slate-600">(기존 RISK 평가 탭 내용...)</p>
+            </div>
+            <!-- Final Test Tab -->
+            <div id="final-test-tab" class="tab-content hidden">
+                <div class="mb-4">
+                    <button id="uploadBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        파일 선택 및 업로드
+                    </button>
+                    <button id="debugBtn" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded ml-2">
+                        🔍 Debug Sequences
+                    </button>
+                    <button id="debugDataBtn" class="bg-orange-500 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded ml-2">
+                        🔬 Debug Parsed Data
+                    </button>
+                </div>
+                <div class="mb-6">
+                    <label class="block mb-2 font-semibold">Final Test Summary 파일 업로드 (.lotSumTXT)</label>
+                    <input type="file" id="final-test-upload" accept=".lotSumTXT" multiple class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                    <p class="text-xs text-slate-500 mt-1">여러 Final Test 요약 파일을 업로드할 수 있습니다.</p>
+                </div>
+                <div id="final-test-loading" class="hidden text-center py-8">
+                    <div class="loader mx-auto"></div>
+                    <p class="mt-4 text-slate-600">파일을 분석 중입니다...</p>
+                </div>
+                <div id="final-test-result" class="hidden">
+                    <!-- Multi-file Summary -->
+                    <div id="multi-file-summary" class="mb-6 p-4 bg-blue-50 rounded-lg">
+                        <h2 class="text-lg font-bold mb-2 text-blue-800">📊 Multi-File Summary</h2>
+                        <div id="file-summary-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4"></div>
+                        <div id="aggregated-yield" class="bg-white p-3 rounded shadow">
+                            <h3 class="font-semibold mb-2">Aggregated Yield Analysis</h3>
+                            <div id="aggregated-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+                            <div class="mt-4 flex gap-2">
+                                <button id="export-summary" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+                                    📊 Export Summary
+                                </button>
+                                <button id="export-details" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
+                                    📋 Export Details
+                                </button>
+                                <button id="export-comparison" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm">
+                                    📈 Export Comparison
+                                </button>
+                                <button id="debug-lot-selection" class="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 text-sm">
+                                    🔍 Debug Lot Selection
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Lot Comparison -->
+                    <div id="lot-comparison" class="mb-6 p-4 bg-green-50 rounded-lg">
+                        <h2 class="text-lg font-bold mb-2 text-green-800">📈 Lot Comparison</h2>
+                        <div class="overflow-x-auto">
+                            <table id="lot-comparison-table" class="w-full text-sm border">
+                                <thead class="bg-green-100">
+                                    <tr>
+                                        <th class="px-2 py-2 text-left">Lot Number</th>
+                                        <th class="px-2 py-2 text-center">Device</th>
+                                        <th class="px-2 py-2 text-center">Lot Size</th>
+                                        <th class="px-2 py-2 text-center">Yield (%)</th>
+                                        <th class="px-2 py-2 text-center">Good</th>
+                                        <th class="px-2 py-2 text-center">Fail</th>
+                                        <th class="px-2 py-2 text-center">Test Date</th>
+                                        <th class="px-2 py-2 text-center">Operator</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Selected Lot Details -->
+                    <div id="selected-lot-details" class="hidden">
+                        <div class="p-4 bg-blue-50 rounded-lg">
+                             <h2 class="text-lg font-bold mb-2 text-blue-800">📋 Selected Lot Details</h2>
+                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                 <!-- Lot Info -->
+                                 <div id="selected-lot-info"></div>
+                                 <!-- Test Summary -->
+                                 <div id="selected-lot-summary"></div>
+                             </div>
+                        </div>
+
+                        <div class="mt-6 p-4 bg-purple-50 rounded-lg">
+                            <h2 class="text-lg font-bold mb-2 text-purple-800">🔍 Lot Specific Analytics</h2>
+                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                <div id="selected-lot-retest-flow" class="bg-white p-4 rounded shadow"></div>
+                                <div id="selected-lot-quality" class="bg-white p-4 rounded shadow"></div>
+                                <div id="selected-lot-failure-analysis" class="bg-white p-4 rounded shadow"></div>
+                             </div>
+                        </div>
+
+                         <div class="mt-6">
+                            <h2 class="text-xl font-bold mb-2">Test 결과 상세 (Site별)</h2>
+                            <div class="overflow-x-auto">
+                                <table id="selected-lot-test-table" class="w-full text-sm text-left border">
+                                    <thead class="bg-slate-100 text-xs uppercase">
+                                        <tr>
+                                            <th class="px-2 py-2">Test</th>
+                                            <th class="px-2 py-2">Result</th>
+                                            <th class="px-2 py-2">Total</th>
+                                            <th class="px-2 py-2">Site1</th>
+                                            <th class="px-2 py-2">Site2</th>
+                                            <th class="px-2 py-2">Site3</th>
+                                            <th class="px-2 py-2">Site4</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Aggregated Enhanced Analytics -->
+                    <div id="enhanced-analytics" class="mt-6 mb-6 p-4 bg-purple-50 rounded-lg">
+                        <h2 class="text-lg font-bold mb-2 text-purple-800">🔬 Aggregated Enhanced Analytics</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div id="trend-analysis" class="bg-white p-4 rounded shadow">
+                                <h3 class="font-semibold mb-2 text-purple-700">📈 Yield Trend Analysis</h3>
+                                <div id="trend-content"></div>
+                            </div>
+                            <div id="failure-patterns" class="bg-white p-4 rounded shadow">
+                                <h3 class="font-semibold mb-2 text-purple-700">🎯 Failure Pattern Analysis</h3>
+                                <div id="pattern-content"></div>
+                            </div>
+                            <div id="site-performance" class="bg-white p-4 rounded shadow">
+                                <h3 class="font-semibold mb-2 text-purple-700">🏭 Site Performance</h3>
+                                <div id="site-content"></div>
+                            </div>
+                        </div>
+                        <div id="correlation-analysis" class="bg-white p-4 rounded shadow">
+                            <h3 class="font-semibold mb-2 text-purple-700">🔗 Failure Correlation Analysis</h3>
+                            <div id="correlation-content"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="debug-info" class="mt-4 p-4 bg-gray-100 rounded text-xs hidden">
+                    <h3 class="font-bold mb-2">Debug Information:</h3>
+                    <pre id="debug-content"></pre>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="js/STDFFileHandler.js"></script>
+    <script>
+    // Global variables
+    let allData = []; // Make this global for enhanced analytics access
+    
+    // Verify STDFFileHandler is loaded
+    if (typeof STDFFileHandler === 'undefined') {
+        console.error('STDFFileHandler failed to load!');
+    } else {
+        stdfHandler = new STDFFileHandler();
+        console.log('STDFFileHandler loaded successfully');
+    }
+    
+    // Make it globally accessible for debugging
+    window.stdfHandler = stdfHandler;
+    
+    // Verify all required functions are defined
+    function verifyFunctions() {
+        const requiredFunctions = [
+            'displayMultiFileSummary',
+            'displayLotComparison', 
+            'displayEnhancedAnalytics',
+            'calculateTrend',
+            'calculateVariation',
+            'analyzeFailureCorrelations',
+            'calculateCorrelation'
+        ];
+        
+        const missingFunctions = requiredFunctions.filter(func => typeof window[func] === 'undefined');
+        
+        if (missingFunctions.length > 0) {
+            console.error('Missing functions:', missingFunctions);
+            return false;
+        }
+        
+        console.log('✅ All required functions are defined');
+        return true;
+    }
+    
+    // Check functions on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        verifyFunctions();
+    });
+    
+    // Tab switching logic
+    document.querySelectorAll('#main-tabs .main-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('#main-tabs .main-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.add('hidden'));
+            const tabId = this.getAttribute('data-tab');
+            document.getElementById(tabId + '-tab').classList.remove('hidden');
+        });
+    });
+
+    // Final Test file upload logic
+    const uploadInput = document.getElementById('final-test-upload');
+    const loadingDiv = document.getElementById('final-test-loading');
+    const resultDiv = document.getElementById('final-test-result');
+    const lotInfoDiv = document.getElementById('final-test-lotinfo');
+    const summaryDiv = document.getElementById('final-test-summary');
+    const analyticsDiv = document.getElementById('final-test-analytics');
+    const tableBody = document.querySelector('#final-test-table tbody');
+    const debugDiv = document.getElementById('debug-info');
+    const debugContent = document.getElementById('debug-content');
+    
+    // Multi-file elements
+    const fileSummaryStats = document.getElementById('file-summary-stats');
+    const aggregatedStats = document.getElementById('aggregated-stats');
+    const lotComparisonTable = document.querySelector('#lot-comparison-table tbody');
+    
+    // Selected lot details elements
+    const selectedLotDetailsDiv = document.getElementById('selected-lot-details');
+    const selectedLotInfoDiv = document.getElementById('selected-lot-info');
+    const selectedLotSummaryDiv = document.getElementById('selected-lot-summary');
+    const selectedLotRetestFlowDiv = document.getElementById('selected-lot-retest-flow');
+    const selectedLotQualityDiv = document.getElementById('selected-lot-quality');
+    const selectedLotFailureAnalysisDiv = document.getElementById('selected-lot-failure-analysis');
+    const selectedLotTestTableBody = document.querySelector('#selected-lot-test-table tbody');
+    
+    // Enhanced analytics elements
+    const trendContent = document.getElementById('trend-content');
+    const patternContent = document.getElementById('pattern-content');
+    const siteContent = document.getElementById('site-content');
+    const correlationContent = document.getElementById('correlation-content');
+
+    // File upload handler
+    document.getElementById('final-test-upload').addEventListener('change', async function(event) {
+        const files = event.target.files;
+        console.log('File upload triggered. Files selected:', files.length);
+        
+        if (files.length === 0) {
+            console.log('No files selected');
+            return;
+        }
+
+        // --- PRE-PROCESSING UI RESET ---
+        console.log('Resetting UI for new file upload...');
+        allData = []; // Clear previous file data
+        document.getElementById('final-test-loading').classList.remove('hidden');
+        document.getElementById('final-test-result').classList.add('hidden');
+        document.getElementById('selected-lot-details').classList.add('hidden');
+        document.querySelector('#lot-comparison-table tbody').innerHTML = '';
+        document.getElementById('trend-content').innerHTML = '';
+        document.getElementById('pattern-content').innerHTML = '';
+        document.getElementById('site-content').innerHTML = '';
+        document.getElementById('correlation-content').innerHTML = '';
+        // --- END RESET ---
+
+        const loadingDiv = document.getElementById('final-test-loading');
+        const resultDiv = document.getElementById('final-test-result');
+        const debugDiv = document.getElementById('debug-info');
+        const debugContent = document.getElementById('debug-content');
+
+        console.log('Showing loading state...');
+        loadingDiv.classList.remove('hidden');
+        resultDiv.classList.add('hidden');
+        debugDiv.classList.add('hidden');
+
+        try {
+            console.log('Starting file processing...');
+            console.log('STDFFileHandler available:', typeof stdfHandler);
+            console.log('STDFFileHandler instance:', stdfHandler);
+            
+            // Process each file
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                console.log(`Processing file ${i + 1}/${files.length}: ${file.name}`);
+                console.log('File details:', {
+                    name: file.name,
+                    size: file.size,
+                    type: file.type
+                });
+                
+                try {
+                    const data = await stdfHandler.loadFile(file);
+                    console.log(`File ${file.name} parse result:`, data);
+                    
+                    if (data && data.success) {
+                        allData.push(data);
+                        console.log(`File ${file.name} processed successfully:`, data);
+                    } else {
+                        console.error(`Failed to process file: ${file.name} - ${data?.error || 'no data returned'}`);
+                    }
+                } catch (fileError) {
+                    console.error(`Error processing file ${file.name}:`, fileError);
+                }
+            }
+
+            console.log('All files processed. Total data entries:', allData.length);
+            console.log('All data array:', allData);
+            
+            // Display results
+            if (allData.length > 0) {
+                console.log('Displaying results...');
+                
+                try {
+                    // Get aggregated analytics
+                    console.log('Getting aggregated analytics...');
+                    const aggregatedAnalytics = stdfHandler.getAggregatedAnalytics();
+                    console.log('Aggregated analytics:', aggregatedAnalytics);
+                    
+                    // Display multi-file summary
+                    console.log('Displaying multi-file summary...');
+                    displayMultiFileSummary(aggregatedAnalytics);
+                    
+                    // Display lot comparison
+                    console.log('Displaying lot comparison...');
+                    displayLotComparison(aggregatedAnalytics);
+                    
+                    // Display enhanced analytics
+                    console.log('Displaying enhanced analytics...');
+                    displayEnhancedAnalytics(aggregatedAnalytics);
+                    
+                    // If only one file, show its details
+                    if (files.length === 1 && allData.length > 0) {
+                        // For a single file, there's no sequence, so we create a synthetic one for display
+                        const fileData = allData[0];
+                        const lotNumber = fileData.data.lotInfo.Lot_number || fileData.data.lotInfo.Lot_ID || 'Unknown';
+                        const syntheticSequence = {
+                            lotNumber: lotNumber,
+                            device: fileData.data.lotInfo.Device_name || 'Unknown',
+                            totalInput: fileData.data.lotInfo.Lot_Size || 0,
+                            totalPass: fileData.data.summary.goodCount || 0,
+                            totalFail: fileData.data.summary.failCount || 0,
+                            finalYield: fileData.data.summary.yieldPercent || 0,
+                            tests: [{ data: fileData.data, testType: fileData.data.lotInfo.Mode || 'P1' }],
+                            analytics: fileData.data.analytics
+                        };
+                        displaySequenceDetails(syntheticSequence);
+                    } else if (files.length > 1) {
+                        // For multiple files, display aggregated summary and select the first lot
+                        const aggregatedAnalytics = stdfHandler.getAggregatedAnalytics();
+                        displayMultiFileSummary(aggregatedAnalytics);
+                        
+                        const firstLotNumber = Object.keys(aggregatedAnalytics.testSequences)[0];
+                        if (firstLotNumber) {
+                            setTimeout(() => selectLot(firstLotNumber), 100); // Select first lot by default
+                        }
+                    }
+                    
+                    console.log('All displays completed successfully');
+                } catch (displayError) {
+                    console.error('Error in display functions:', displayError);
+                    resultDiv.innerHTML = `<p class="text-red-600">Error displaying data: ${displayError.message}</p>`;
+                }
+            } else {
+                console.error('No valid data found in uploaded files');
+                resultDiv.innerHTML = '<p class="text-red-600">No valid data found in uploaded files. Check console for details.</p>';
+            }
+        } catch (e) {
+            console.error('Error processing files:', e);
+            debugContent.textContent = `Error: ${e.message}\n\nStack trace: ${e.stack}`;
+            resultDiv.innerHTML = `<p class="text-red-600">Error processing files: ${e.message}</p>`;
+        } finally {
+            console.log('Hiding loading state...');
+            loadingDiv.classList.add('hidden');
+            resultDiv.classList.remove('hidden');
+            debugDiv.classList.remove('hidden');
+        }
+    });
+
+    // Display summary for multiple files
+    function displayMultiFileSummary(analytics) {
+        console.log('=== Displaying Multi-File Summary ===');
+        console.log('Received analytics:', analytics);
+
+        try {
+            if (!analytics || typeof analytics !== 'object') {
+                throw new Error("Invalid or null analytics object received.");
+            }
+
+            // Unhide the result section
+            document.getElementById('final-test-result').classList.remove('hidden');
+
+            // 1. Display Aggregated Stats
+            const aggregatedStats = document.getElementById('aggregated-stats');
+            if (aggregatedStats) {
+                const yieldPercent = analytics.overallYield || 0;
+                const yieldStatus = yieldPercent >= 95 ? 'Excellent' : 
+                                   yieldPercent >= 90 ? 'Good' : 
+                                   yieldPercent >= 80 ? 'Fair' : 'Poor';
+                const statusColor = yieldPercent >= 95 ? 'text-green-600' : 
+                                   yieldPercent >= 90 ? 'text-blue-600' : 
+                                   yieldPercent >= 80 ? 'text-yellow-600' : 'text-red-600';
+
+                aggregatedStats.innerHTML = `
+                    <div class="text-center">
+                        <div class="text-3xl font-bold">${(analytics.totalGood || 0).toLocaleString()}</div>
+                        <div class="text-sm text-gray-600">Total Good</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold">${(analytics.totalFail || 0).toLocaleString()}</div>
+                        <div class="text-sm text-gray-600">Total Fail</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold ${statusColor}">${yieldPercent.toFixed(2)}%</div>
+                        <div class="text-sm text-gray-600">Overall Yield</div>
+                    </div>
+                `;
+            }
+
+            // 2. Display Lot Comparison Table
+            // Ensure testSequences exists before trying to display it
+            if (analytics.testSequences && typeof analytics.testSequences === 'object') {
+                displayLotComparison(analytics);
+            } else {
+                console.warn('No test sequences found in analytics object.');
+                const lotComparisonTable = document.querySelector('#lot-comparison-table tbody');
+                if (lotComparisonTable) {
+                    lotComparisonTable.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-gray-500">No lot sequences to compare.</td></tr>';
+                }
+            }
+            
+            // 3. Display Enhanced Aggregated Analytics
+            // Ensure enhancedAnalytics exists
+            if (analytics.enhancedAnalytics && typeof analytics.enhancedAnalytics === 'object') {
+                displayEnhancedAnalytics(analytics.enhancedAnalytics);
+            } else {
+                console.warn('No enhanced analytics found in analytics object.');
+                // Clear or hide enhanced analytics sections if desired
+                document.getElementById('enhanced-analytics').classList.add('hidden');
+            }
+
+        } catch (error) {
+            console.error('Error in displayMultiFileSummary:', error);
+            const resultDiv = document.getElementById('final-test-result');
+            resultDiv.innerHTML = `<div class="p-4 bg-red-100 text-red-700 rounded">Error displaying multi-file summary: ${error.message}</div>`;
+            resultDiv.classList.remove('hidden');
+        }
+    }
+
+    // Enhanced analytics display function
+    function displayEnhancedAnalytics(analytics) {
+        console.log('=== Displaying Enhanced Analytics ===', analytics);
+        const enhancedAnalyticsDiv = document.getElementById('enhanced-analytics');
+        
+        // Check if we have meaningful data to display
+        const hasTestResults = analytics.testResults && analytics.testResults.length > 0;
+        const hasMultipleLots = window.allData && window.allData.length > 1;
+        
+        if (!hasTestResults && !hasMultipleLots) {
+            enhancedAnalyticsDiv.classList.add('hidden');
+            return;
+        }
+        
+        enhancedAnalyticsDiv.classList.remove('hidden');
+
+        // 1. Yield Trend Analysis
+        const trendContent = document.getElementById('trend-content');
+        if (hasMultipleLots && analytics.yieldTrend && analytics.yieldTrend.average > 0) {
+            const trend = analytics.yieldTrend;
+            trendContent.innerHTML = `
+                <div class="text-sm space-y-1">
+                    <div><span class="font-medium">Average Yield:</span> <span class="font-bold">${trend.average.toFixed(2)}%</span></div>
+                    <div><span class="font-medium">Yield Range:</span> ${trend.range}</div>
+                    <div><span class="font-medium">Trend:</span> <span class="font-semibold">${trend.trend}</span></div>
+                    <div><span class="font-medium">Variation:</span> ${trend.variation.toFixed(2)}%</div>
+                </div>`;
+        } else {
+            trendContent.innerHTML = `<p class="text-sm text-gray-500">Multiple distinct lots needed for trend analysis.</p>`;
+        }
+
+        // 2. Failure Pattern Analysis
+        const patternContent = document.getElementById('pattern-content');
+        if (hasTestResults && analytics.failurePatterns && analytics.failurePatterns.topPatterns && analytics.failurePatterns.topPatterns.length > 0) {
+            const patterns = analytics.failurePatterns.topPatterns;
+            patternContent.innerHTML = `
+                <ul class="text-xs space-y-1">
+                    ${patterns.map(p => `
+                        <li class="flex justify-between">
+                            <span class="truncate pr-2" title="${p.pattern}">${p.pattern}</span>
+                            <span class="font-bold">${p.count}</span>
+                        </li>`).join('')}
+                </ul>`;
+        } else {
+            patternContent.innerHTML = `<p class="text-sm text-gray-500">No significant failure patterns found.</p>`;
+        }
+
+        // 3. Site Performance
+        const siteContent = document.getElementById('site-content');
+        if (hasTestResults && analytics.sitePerformance && analytics.sitePerformance.distribution && Object.keys(analytics.sitePerformance.distribution).length > 0) {
+            const distribution = analytics.sitePerformance.distribution;
+            const total = Object.values(distribution).reduce((sum, site) => sum + site.total, 0);
+            siteContent.innerHTML = `
+                <ul class="text-sm space-y-1">
+                    ${Object.entries(distribution).map(([site, data]) => `
+                        <li class="flex justify-between">
+                            <span>${site.toUpperCase()}</span>
+                            <span class="font-semibold">${((data.total / total) * 100).toFixed(1)}%</span>
+                        </li>`).join('')}
+                </ul>`;
+        } else {
+            siteContent.innerHTML = `<p class="text-sm text-gray-500">No site performance data available.</p>`;
+        }
+        
+        // 4. Failure Correlation Analysis
+        const correlationContent = document.getElementById('correlation-content');
+        if (hasTestResults && analytics.failureCorrelations && analytics.failureCorrelations.correlations && analytics.failureCorrelations.correlations.length > 0) {
+            const correlations = analytics.failureCorrelations.correlations;
+            correlationContent.innerHTML = `
+                <ul class="text-xs space-y-1">
+                    ${correlations.slice(0, 5).map(c => `
+                        <li class="border-t pt-1 mt-1">
+                            <div class="flex justify-between">
+                                <span class="truncate pr-2" title="${c.pair}">${c.pair}</span>
+                                <span class="font-bold">${(c.correlation * 100).toFixed(1)}%</span>
+                            </div>
+                            <div class="text-right text-gray-500">${c.interpretation}</div>
+                        </li>`).join('')}
+                </ul>`;
+        } else {
+            correlationContent.innerHTML = `<p class="text-sm text-gray-500">Insufficient data for correlation analysis.</p>`;
+        }
+    }
+
+    // Enhanced failure correlation analysis
+    function analyzeFailureCorrelations(analytics) {
+        const correlations = [];
+        
+        // Get failure data from all lots
+        const failureData = [];
+        const sequences = analytics.testSequences || {};
+        
+        Object.entries(sequences).forEach(([lotNumber, sequence]) => {
+            const lotFailures = {};
+            
+            // Extract failure counts from test data
+            if (sequence.tests && sequence.tests.length > 0) {
+                sequence.tests.forEach(test => {
+                    // Simulate failure distribution based on test type and yield
+                    const failRate = 1 - (test.yield / 100);
+                    const totalFailures = test.failCount;
+                    
+                    // Distribute failures across common failure types
+                    const failureTypes = [
+                        'FT_USB_testj_MIN',
+                        'FT_USB_testj_MAX', 
+                        'FT_USB_HSchirp_MIN',
+                        'FUNCTION_VOH2_1_MIN',
+                        'FUNCTION_VOH1_2_MIN',
+                        'FUNCTION_VOH4_MIN',
+                        'FUNCTION_VOL1_2_MAX',
+                        'FUNCTION_VOL2_1_MAX'
+                    ];
+                    
+                    failureTypes.forEach((failureType, index) => {
+                        const failureCount = Math.round(totalFailures * (0.3 - index * 0.02));
+                        if (failureCount > 0) {
+                            lotFailures[failureType] = (lotFailures[failureType] || 0) + failureCount;
+                        }
+                    });
+                });
+            }
+            
+            if (Object.keys(lotFailures).length > 0) {
+                failureData.push(lotFailures);
+            }
+        });
+        
+        // Calculate correlations between failure types
+        const failureTypes = [
+            'FT_USB_testj_MIN',
+            'FT_USB_testj_MAX', 
+            'FT_USB_HSchirp_MIN',
+            'FUNCTION_VOH2_1_MIN',
+            'FUNCTION_VOH1_2_MIN',
+            'FUNCTION_VOH4_MIN'
+        ];
+        
+        for (let i = 0; i < failureTypes.length; i++) {
+            for (let j = i + 1; j < failureTypes.length; j++) {
+                const failure1 = failureTypes[i];
+                const failure2 = failureTypes[j];
+                
+                const values1 = failureData.map(lot => lot[failure1] || 0);
+                const values2 = failureData.map(lot => lot[failure2] || 0);
+                
+                if (values1.length > 1 && values2.length > 1) {
+                    const correlation = calculateCorrelation(values1, values2);
+                    
+                    if (Math.abs(correlation) > 0.3) { // Only show significant correlations
+                        correlations.push({
+                            failure1,
+                            failure2,
+                            correlation: Math.abs(correlation),
+                            interpretation: getCorrelationInterpretation(correlation)
+                        });
+                    }
+                }
+            }
+        }
+        
+        // Sort by correlation strength
+        return correlations.sort((a, b) => b.correlation - a.correlation);
+    }
+
+    function getCorrelationInterpretation(correlation) {
+        const absCorr = Math.abs(correlation);
+        if (absCorr > 0.8) return 'Very Strong Correlation';
+        if (absCorr > 0.6) return 'Strong Correlation';
+        if (absCorr > 0.4) return 'Moderate Correlation';
+        if (absCorr > 0.2) return 'Weak Correlation';
+        return 'Very Weak Correlation';
+    }
+
+    // Helper functions for enhanced analytics
+    function calculateTrend(values) {
+        if (values.length < 2) return 0;
+        const n = values.length;
+        const sumX = (n * (n - 1)) / 2;
+        const sumY = values.reduce((a, b) => a + b, 0);
+        const sumXY = values.reduce((sum, val, i) => sum + (i * val), 0);
+        const sumX2 = values.reduce((sum, val, i) => sum + (i * i), 0);
+        
+        const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        return slope;
+    }
+
+    function calculateVariation(values) {
+        if (values.length < 2) return 0;
+        const mean = values.reduce((a, b) => a + b, 0) / values.length;
+        const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
+        return Math.sqrt(variance);
+    }
+
+    function calculateCorrelation(x, y) {
+        if (x.length !== y.length || x.length < 2) return 0;
+        
+        const n = x.length;
+        const sumX = x.reduce((a, b) => a + b, 0);
+        const sumY = y.reduce((a, b) => a + b, 0);
+        const sumXY = x.reduce((sum, val, i) => sum + (val * y[i]), 0);
+        const sumX2 = x.reduce((sum, val) => sum + (val * val), 0);
+        const sumY2 = y.reduce((sum, val) => sum + (val * val), 0);
+        
+        const numerator = n * sumXY - sumX * sumY;
+        const denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+        
+        return denominator === 0 ? 0 : numerator / denominator;
+    }
+
+    // Export functionality
+    document.getElementById('export-summary').addEventListener('click', () => {
+        exportToCSV('summary', generateSummaryData());
+    });
+
+    document.getElementById('export-details').addEventListener('click', () => {
+        exportToCSV('details', generateDetailsData());
+    });
+
+    document.getElementById('export-comparison').addEventListener('click', () => {
+        exportToCSV('comparison', generateComparisonData());
+    });
+
+    document.getElementById('debug-lot-selection').addEventListener('click', () => {
+        console.log('Debug lot selection clicked');
+        
+        // Get all lot rows
+        const lotRows = document.querySelectorAll('.lot-row');
+        console.log('Found lot rows:', lotRows.length);
+        
+        // Get aggregated analytics
+        const aggregatedAnalytics = stdfHandler.getAggregatedAnalytics();
+        const sequences = aggregatedAnalytics.testSequences || {};
+        console.log('Available lots:', Object.keys(sequences));
+        
+        // Debug: Check all processed files
+        console.log('=== Debug All Processed Files ===');
+        const allProcessedFiles = stdfHandler.getAllProcessedFiles();
+        console.log('Total processed files:', allProcessedFiles.length);
+        
+        allProcessedFiles.forEach((file, index) => {
+            if (file.success && file.data && file.data.lotInfo) {
+                const lotInfo = file.data.lotInfo;
+                const lotNumber = lotInfo.Lot_number || lotInfo.Lot_ID || lotInfo.LotNumber;
+                console.log(`File ${index + 1}: ${file.fileName} -> Lot: ${lotNumber}, Device: ${lotInfo.Device_name}`);
+            }
+        });
+        
+        // Debug: Check sequences vs allData
+        console.log('=== Debug Sequences vs AllData ===');
+        console.log('Sequences found:', Object.keys(sequences));
+        console.log('AllData lots:', allData.map(f => f.data?.lotInfo?.Lot_number).filter(Boolean));
+        
+        // Debug file content for first file
+        if (allData.length > 0) {
+            console.log('=== Debug First File Content ===');
+            console.log('File data:', allData[0]);
+            if (allData[0].data && allData[0].data.lotInfo) {
+                console.log('Lot info keys:', Object.keys(allData[0].data.lotInfo));
+                console.log('Lot info values:', allData[0].data.lotInfo);
+            }
+        }
+        
+        // Test selecting the first lot
+        if (Object.keys(sequences).length > 0) {
+            const firstLot = Object.keys(sequences)[0];
+            console.log('Testing selection of first lot:', firstLot);
+            selectLot(firstLot);
+        }
+        
+        // Test clicking on a lot row
+        if (lotRows.length > 0) {
+            console.log('Testing click on first lot row');
+            lotRows[0].click();
+        }
+    });
+
+    function generateSummaryData() {
+        const summaryData = [];
+        summaryData.push(['Wafer Test Summary Report', '', '', '']);
+        summaryData.push(['Generated:', new Date().toLocaleString(), '', '']);
+        summaryData.push(['', '', '', '']);
+        
+        // Get aggregated analytics
+        const aggregatedAnalytics = stdfHandler.getAggregatedAnalytics();
+        const sequences = aggregatedAnalytics.testSequences || {};
+        
+        // Add summary statistics
+        summaryData.push(['Summary Statistics', '', '', '']);
+        summaryData.push(['Total Files', aggregatedAnalytics.totalFiles, '', '']);
+        summaryData.push(['Total Lots', aggregatedAnalytics.totalLots, '', '']);
+        summaryData.push(['Average Yield', aggregatedAnalytics.averageYield.toFixed(2) + '%', '', '']);
+        summaryData.push(['Yield Range', `${aggregatedAnalytics.yieldRange.min.toFixed(1)}% - ${aggregatedAnalytics.yieldRange.max.toFixed(1)}%`, '', '']);
+        summaryData.push(['', '', '', '']);
+        
+        // Add lot details
+        summaryData.push(['Lot Details', '', '', '']);
+        summaryData.push(['Lot Number', 'Device', 'Lot Size', 'Yield (%)', 'Good', 'Fail']);
+        
+        Object.entries(sequences).forEach(([lotNumber, sequence]) => {
+            summaryData.push([
+                lotNumber,
+                sequence.device || 'N/A',
+                sequence.totalInput,
+                sequence.finalYield.toFixed(2) + '%',
+                sequence.totalPass,
+                sequence.totalFail
+            ]);
+        });
+        
+        return summaryData;
+    }
+
+    function generateDetailsData() {
+        const detailsData = [];
+        detailsData.push(['Detailed Test Results Report', '', '', '', '', '', '']);
+        detailsData.push(['Generated:', new Date().toLocaleString(), '', '', '', '', '']);
+        detailsData.push(['', '', '', '', '', '', '']);
+        
+        // Get aggregated analytics
+        const aggregatedAnalytics = stdfHandler.getAggregatedAnalytics();
+        const sequences = aggregatedAnalytics.testSequences || {};
+        
+        // Add lot details
+        Object.entries(sequences).forEach(([lotNumber, sequence]) => {
+            detailsData.push(['', '', '', '', '', '', '']);
+            detailsData.push([`Lot: ${lotNumber}`, '', '', '', '', '', '']);
+            detailsData.push(['Device', sequence.device || 'N/A', '', '', '', '', '']);
+            detailsData.push(['Lot Size', sequence.totalInput, '', '', '', '', '']);
+            detailsData.push(['Final Yield', sequence.finalYield.toFixed(2) + '%', '', '', '', '', '']);
+            detailsData.push(['Total Pass', sequence.totalPass, '', '', '', '', '']);
+            detailsData.push(['Final Fail', sequence.totalFail, '', '', '', '', '']);
+            
+            // Add re-test flow details
+            detailsData.push(['', '', '', '', '', '', '']);
+            detailsData.push(['Re-Test Flow', 'Input', 'Pass', 'Fail', 'Yield (%)', '', '']);
+            sequence.tests.forEach(test => {
+                detailsData.push([
+                    test.testType,
+                    test.inputCount,
+                    test.passCount,
+                    test.failCount,
+                    test.yield.toFixed(2) + '%',
+                    '',
+                    ''
+                ]);
+            });
+        });
+        
+        return detailsData;
+    }
+
+    function generateComparisonData() {
+        const comparisonData = [];
+        comparisonData.push(['Lot Comparison Report', '', '', '', '', '', '']);
+        comparisonData.push(['Generated:', new Date().toLocaleString(), '', '', '', '', '']);
+        comparisonData.push(['', '', '', '', '', '', '']);
+        
+        // Get aggregated analytics
+        const aggregatedAnalytics = stdfHandler.getAggregatedAnalytics();
+        const sequences = aggregatedAnalytics.testSequences || {};
+        
+        // Add comparison table
+        comparisonData.push(['Lot Number', 'Device', 'Lot Size', 'Yield (%)', 'Good', 'Fail', 'Status']);
+        
+        Object.entries(sequences).forEach(([lotNumber, sequence]) => {
+            const yieldStatus = sequence.finalYield >= 95 ? 'Excellent' : 
+                               sequence.finalYield >= 90 ? 'Good' : 
+                               sequence.finalYield >= 80 ? 'Fair' : 'Poor';
+            
+            comparisonData.push([
+                lotNumber,
+                sequence.device || 'N/A',
+                sequence.totalInput,
+                sequence.finalYield.toFixed(2) + '%',
+                sequence.totalPass,
+                sequence.totalFail,
+                yieldStatus
+            ]);
+        });
+        
+        // Add trend analysis
+        comparisonData.push(['', '', '', '', '', '', '']);
+        comparisonData.push(['Trend Analysis', '', '', '', '', '', '']);
+        comparisonData.push(['Average Yield', aggregatedAnalytics.averageYield.toFixed(2) + '%', '', '', '', '', '']);
+        comparisonData.push(['Yield Range', `${aggregatedAnalytics.yieldRange.min.toFixed(1)}% - ${aggregatedAnalytics.yieldRange.max.toFixed(1)}%`, '', '', '', '', '']);
+        comparisonData.push(['Variation', ((aggregatedAnalytics.yieldRange.max - aggregatedAnalytics.yieldRange.min) / aggregatedAnalytics.averageYield * 100).toFixed(1) + '%', '', '', '', '', '']);
+        
+        return comparisonData;
+    }
+
+    function exportToCSV(type, data) {
+        const csvContent = data.map(row => 
+            row.map(cell => `"${cell}"`).join(',')
+        ).join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `wafer_test_${type}_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // Display lot comparison
+    function displayLotComparison(analytics) {
+        try {
+            const lotComparisonTable = document.querySelector('#lot-comparison-table tbody');
+            const sequences = analytics.testSequences;
+            
+            console.log('=== Display Lot Comparison Debug ===');
+            
+            // Critical check to prevent the error
+            if (!sequences || typeof sequences !== 'object') {
+                 console.error("displayLotComparison received invalid or null sequences.");
+                 if (lotComparisonTable) lotComparisonTable.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-red-500">Error: Invalid sequence data.</td></tr>';
+                 return;
+            }
+
+            const sequenceKeys = Object.keys(sequences);
+            console.log('Total sequences for display:', sequenceKeys.length);
+            console.log('Available lots from sequences:', sequenceKeys);
+            
+            if (sequenceKeys.length === 0) {
+                lotComparisonTable.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-gray-500">No lot data available to compare</td></tr>';
+                return;
+            }
+            
+            lotComparisonTable.innerHTML = Object.entries(sequences).map(([lotNumber, sequence]) => {
+                const yieldPercent = sequence.finalYield || 0;
+                const totalPass = sequence.totalPass || 0;
+                const totalFail = sequence.totalFail || 0;
+                const lotSize = sequence.totalInput || 0;
+                const device = sequence.device || 'Unknown';
+                
+                // Get other info from the first test in the sequence
+                let testDate = 'N/A';
+                let operator = 'N/A';
+                if (sequence.tests && sequence.tests.length > 0) {
+                    const firstTestInfo = sequence.tests[0].data.lotInfo;
+                    testDate = firstTestInfo.Start_time || firstTestInfo.Test_date || 'N/A';
+                    operator = firstTestInfo.Operator_id || firstTestInfo.Operator || 'N/A';
+                }
+
+                console.log(`Adding lot to table: ${lotNumber}, Yield: ${yieldPercent.toFixed(2)}%, Operator: ${operator}`);
+                
+                return `
+                    <tr class="lot-row border-t hover:bg-gray-50 cursor-pointer" data-lot="${lotNumber}">
+                        <td class="p-2 font-medium">${lotNumber}</td>
+                        <td class="p-2 text-center">${device}</td>
+                        <td class="p-2 text-center">${lotSize.toLocaleString()}</td>
+                        <td class="p-2 text-center font-bold">${yieldPercent.toFixed(2)}%</td>
+                        <td class="p-2 text-center text-green-600">${totalPass.toLocaleString()}</td>
+                        <td class="p-2 text-center text-red-600">${totalFail.toLocaleString()}</td>
+                        <td class="p-2 text-center">${testDate}</td>
+                        <td class="p-2 text-center">${operator}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            console.log(`Total rows added to table: ${Object.keys(sequences).length}`);
+            
+            // Add event listeners to lot rows
+            document.querySelectorAll('.lot-row').forEach(row => {
+                row.addEventListener('click', function() {
+                    const lotNumber = this.getAttribute('data-lot');
+                    if (lotNumber) {
+                        selectLot(lotNumber);
+                    } else {
+                        console.error('No lot number found in row data');
+                    }
+                });
+            });
+            
+            // Select first lot by default
+            const firstLot = Object.keys(sequences)[0];
+            if (firstLot) {
+                setTimeout(() => {
+                    selectLot(firstLot);
+                }, 100);
+            }
+            
+        } catch (error) {
+            console.error('Error in displayLotComparison:', error);
+            const lotComparisonTable = document.querySelector('#lot-comparison-table tbody');
+            if(lotComparisonTable) lotComparisonTable.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-red-500">Error displaying lot comparison</td></tr>';
+        }
+    }
+    
+    // Select lot and update details display
+    function selectLot(lotNumber) {
+        console.log('=== selectLot Triggered ===');
+        console.log('Selected lot number:', lotNumber);
+        
+        // Update visual highlighting
+        document.querySelectorAll('.lot-row').forEach(row => {
+            row.classList.toggle('bg-blue-100', row.getAttribute('data-lot') === lotNumber);
+        });
+
+        const aggregatedAnalytics = stdfHandler.getAggregatedAnalytics();
+        const sequence = aggregatedAnalytics.testSequences[lotNumber];
+
+        if (sequence) {
+            console.log('Found sequence for lot. Displaying details.', sequence);
+            displaySequenceDetails(sequence);
+        } else {
+            console.error('Could not find sequence for lot:', lotNumber);
+            displaySequenceDetails(null); // Clear the details section
+        }
+    }
+    
+    // Display the full details for a selected sequence
+    function displaySequenceDetails(sequence) {
+        const detailsDiv = document.getElementById('selected-lot-details');
+        if (!sequence) {
+            detailsDiv.classList.add('hidden');
+            return;
+        }
+        detailsDiv.classList.remove('hidden');
+
+        const lotInfo = sequence.tests[0].data.lotInfo;
+        const analytics = sequence.analytics;
+
+        // 1. Lot Info
+        document.getElementById('selected-lot-info').innerHTML = `
+            <h3 class="font-semibold text-gray-700 mb-2">Lot Information</h3>
+            <div class="space-y-1 text-sm">
+                <div><span class="font-medium">Lot Number:</span> ${sequence.lotNumber}</div>
+                <div><span class="font-medium">Device:</span> ${sequence.device}</div>
+                <div><span class="font-medium">Lot Size:</span> ${(lotInfo.Lot_Size || 0).toLocaleString()}</div>
+                <div><span class="font-medium">Test Date:</span> ${lotInfo.Start_time || lotInfo.Test_date || 'N/A'}</div>
+                <div><span class="font-medium">Operator:</span> ${lotInfo.Operator_id || lotInfo.Operator || 'N/A'}</div>
+            </div>`;
+
+        // 2. Test Summary
+        document.getElementById('selected-lot-summary').innerHTML = `
+            <h3 class="font-semibold text-gray-700 mb-2">Test Summary</h3>
+            <div class="grid grid-cols-3 gap-4">
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-green-600">${sequence.totalPass.toLocaleString()}</div>
+                    <div class="text-sm text-gray-600">Total Pass</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-red-600">${sequence.totalFail.toLocaleString()}</div>
+                    <div class="text-sm text-gray-600">Final Fail</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-blue-600">${sequence.finalYield.toFixed(2)}%</div>
+                    <div class="text-sm text-gray-600">Final Yield</div>
+                </div>
+            </div>`;
+            
+        // 3. Re-Test Flow
+        const retestFlow = analytics.reTestFlow;
+        document.getElementById('selected-lot-retest-flow').innerHTML = `
+            <h3 class="font-semibold mb-2 text-purple-700">🔄 Re-Test Flow Analysis</h3>
+            <div class="space-y-1 text-sm">
+                <div><span class="font-medium">Sequence:</span> ${retestFlow.testSequence}</div>
+                <div><span class="font-medium">Initial Lot Size:</span> ${retestFlow.initialLotSize.toLocaleString()}</div>
+                <div><span class="font-medium">Final Yield:</span> <span class="font-bold">${retestFlow.finalYield.toFixed(2)}%</span></div>
+                ${retestFlow.isSingleTest ? '<div class="text-xs text-gray-500">Single test result - no re-test flow</div>' : ''}
+            </div>`;
+            
+        // 4. Quality Metrics
+        const quality = analytics.qualityMetrics;
+        document.getElementById('selected-lot-quality').innerHTML = `
+            <h3 class="font-semibold mb-2 text-purple-700">🏅 Quality Metrics</h3>
+            <div class="space-y-1 text-sm">
+                 <div><span class="font-medium">Sigma Level:</span> ${quality.sigmaLevel.toFixed(2)}</div>
+                 <div><span class="font-medium">Cpk:</span> ${quality.cpk.toFixed(2)}</div>
+                 <div><span class="font-medium">Quality Score:</span> <span class="font-bold">${quality.qualityScore.toFixed(1)}/100</span></div>
+            </div>`;
+        
+        // 5. Failure Analysis
+        const rootCause = analytics.rootCause;
+        document.getElementById('selected-lot-failure-analysis').innerHTML = `
+            <h3 class="font-semibold mb-2 text-purple-700">🔬 Failure Analysis</h3>
+            <div class="text-sm">
+                <p class="font-medium mb-1">Potential Root Causes:</p>
+                <ul class="list-disc list-inside">
+                    ${rootCause.potentialCauses.map(c => `<li>${c}</li>`).join('')}
+                </ul>
+            </div>`;
+
+        // 6. Test Results Table
+        const tableBody = document.getElementById('selected-lot-test-table').querySelector('tbody');
+        console.log(`Displaying test results for ${sequence.lotNumber}:`, analytics.testResults); // Debug Log
+        
+        if (analytics.testResults && analytics.testResults.length > 0) {
+            // Filter out PASS results and show only FAIL results for better analysis
+            const failResults = analytics.testResults.filter(test => test.result === 'FAIL');
+            
+            if (failResults.length > 0) {
+                tableBody.innerHTML = failResults.slice(0, 20).map(test => `
+                    <tr class="border-t">
+                        <td class="p-2 text-xs">${test.description}</td>
+                        <td class="p-2 text-center text-red-600 font-medium">${test.result}</td>
+                        <td class="p-2 text-center">${test.total}</td>
+                        ${[1, 2, 3, 4].map(siteNum => `<td class="p-2 text-center text-xs">${test.sites[siteNum] || 0}</td>`).join('')}
+                    </tr>
+                `).join('');
+            } else {
+                tableBody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-green-600 font-medium">✅ All tests passed - No failures detected</td></tr>`;
+            }
+        } else {
+            tableBody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-500">No detailed failure data available for this lot.</td></tr>`;
+        }
+    }
+
+    // Remove obsolete functions
+    window.updateLotInfo = undefined;
+    window.updateTestSummary = undefined;
+    
+    // Debug button event listener
+    document.addEventListener('DOMContentLoaded', function() {
+        // Debug data button
+        const debugDataBtn = document.getElementById('debugDataBtn');
+        if (debugDataBtn) {
+            debugDataBtn.addEventListener('click', function() {
+                console.log('=== Debug Parsed Data ===');
+                console.log('Total files loaded:', allData.length);
+                
+                allData.forEach((fileData, index) => {
+                    console.log(`\n--- File ${index + 1}: ${fileData.fileName} ---`);
+                    console.log('File success:', fileData.success);
+                    
+                    if (fileData.success && fileData.data) {
+                        console.log('Lot Info:', fileData.data.lotInfo);
+                        console.log('Summary:', fileData.data.summary);
+                        console.log('Analytics:', fileData.data.analytics);
+                        console.log('Test Results Count:', fileData.data.testResults ? fileData.data.testResults.length : 0);
+                        
+                        // Show first few test results
+                        if (fileData.data.testResults && fileData.data.testResults.length > 0) {
+                            console.log('First 3 Test Results:', fileData.data.testResults.slice(0, 3));
+                        }
+                    } else {
+                        console.log('File error:', fileData.error);
+                    }
+                });
+                
+                // Show aggregated analytics
+                const aggregatedAnalytics = stdfHandler.getAggregatedAnalytics();
+                console.log('\n--- Aggregated Analytics ---');
+                console.log('Total Files:', aggregatedAnalytics.totalFiles);
+                console.log('Total Good:', aggregatedAnalytics.totalGood);
+                console.log('Total Fail:', aggregatedAnalytics.totalFail);
+                console.log('Overall Yield:', aggregatedAnalytics.overallYield);
+                console.log('Test Sequences:', aggregatedAnalytics.testSequences);
+            });
+        }
+        
+        // const debugButton = document.getElementById('debug-lot-selection');
+        // if (debugButton) {
+        //     debugButton.addEventListener('click', function() {
+        //         console.log('=== Debug Lot Selection ===');
+        //         console.log('Total files loaded:', allData.length);
+        //         console.log('All lot numbers:', allData.map(f => f.data?.lotInfo?.Lot_number || f.data?.lotInfo?.Lot_ID || f.data?.lotInfo?.LotNumber).filter(Boolean));
+        //         console.log('Lot comparison table rows:', document.querySelectorAll('.lot-row').length);
+        //         console.log('Available lot rows:', Array.from(document.querySelectorAll('.lot-row')).map(row => row.getAttribute('data-lot')));
+                
+        //         // Test clicking first lot if available
+        //         const firstLotRow = document.querySelector('.lot-row');
+        //         if (firstLotRow) {
+        //             const lotNumber = firstLotRow.getAttribute('data-lot');
+        //             console.log('Testing click on first lot:', lotNumber);
+        //             selectLot(lotNumber);
+        //         } else {
+        //             console.log('No lot rows found');
+        //         }
+        //     });
+        // }
+    });
+</script>
+</body>
+</html>
