@@ -1,0 +1,52 @@
+{
+  "sessionId": "test-session",
+  "roundCount": 5,
+  "sessionData": [
+    {
+      "roundNumber": 1,
+      "timestamp": "2025-06-22T12:42:44.321Z",
+      "userInput": "채팅 세션 관리 시스템을 만들어주세요",
+      "aiOutput": "네, 채팅 세션 관리 시스템을 구현해드리겠습니다. 이 시스템은 라운드 카운팅, 용량 한계 추정, 세션 요약 기능을 포함합니다.",
+      "summary": "채팅 세션 관리 시스템 요청 및 구현 계획",
+      "inputLength": 20,
+      "outputLength": 70
+    },
+    {
+      "roundNumber": 2,
+      "timestamp": "2025-06-22T12:42:44.329Z",
+      "userInput": "라운드 카운팅 기능은 어떻게 구현하나요?",
+      "aiOutput": "라운드 카운팅은 매 사용자 입력과 AI 출력을 하나의 라운드로 계산합니다. addRound() 메서드를 사용하여 라운드를 추가하고, roundCount 변수로 추적합니다.",
+      "summary": "라운드 카운팅 구현 방법 설명",
+      "inputLength": 22,
+      "outputLength": 95
+    },
+    {
+      "roundNumber": 3,
+      "timestamp": "2025-06-22T12:42:44.333Z",
+      "userInput": "용량 한계는 어떻게 설정하나요?",
+      "aiOutput": "용량 한계는 maxRounds 변수로 설정하며, 기본값은 50라운드입니다. 80% 도달 시 경고를 표시하고, 100% 도달 시 세션 종료를 권장합니다.",
+      "summary": "용량 한계 설정 방법",
+      "inputLength": 17,
+      "outputLength": 84
+    },
+    {
+      "roundNumber": 4,
+      "timestamp": "2025-06-22T12:42:44.336Z",
+      "userInput": "세션 요약 기능을 추가해주세요",
+      "aiOutput": "세션 요약 기능을 추가했습니다. generateSessionSummary() 메서드로 라운드별 요약, 키워드 추출, 통계 정보를 생성합니다.",
+      "summary": "세션 요약 기능 구현",
+      "inputLength": 16,
+      "outputLength": 78
+    },
+    {
+      "roundNumber": 5,
+      "timestamp": "2025-06-22T12:42:44.348Z",
+      "userInput": "이전 세션을 계속할 수 있나요?",
+      "aiOutput": "네, loadPreviousSession() 메서드를 사용하여 이전 세션을 로드할 수 있습니다. 세션 데이터는 JSON 파일로 저장되어 세션 간 연속성을 보장합니다.",
+      "summary": "이전 세션 계속 기능 설명",
+      "inputLength": 17,
+      "outputLength": 92
+    }
+  ],
+  "lastUpdated": "2025-06-22T12:42:44.348Z"
+}

@@ -6,13 +6,17 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "webpack --mode production",
-    "dev": "webpack --mode development --watch"
+    "dev": "webpack --mode development --watch",
+    "chat-manager": "node scripts/chat-manager.js",
+    "chat-session": "node scripts/chat-manager.js",
+    "session-info": "node -e \"const manager = require('./scripts/utils/chatSessionManager'); const m = new manager(); console.log(m.getSessionInfo());\"",
+    "session-list": "node -e \"const manager = require('./scripts/utils/chatSessionManager'); const m = new manager(); console.log('Previous sessions:', m.listPreviousSessions());\""
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/oktokki/WaferMap.git"
   },
-  "keywords": [],
+  "keywords": ["wafer-map", "semiconductor", "quality-control", "dashboard", "chat-session-management"],
   "author": "",
   "license": "ISC",
   "bugs": {
