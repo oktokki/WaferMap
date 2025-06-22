@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wafer Test Analytics - Semiconductor Value Chain ERP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .wafer-map-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #wafer-map-canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <button onclick="goBack()" class="text-gray-600 hover:text-gray-800 transition-colors">
+                        <i class="fas fa-arrow-left text-xl"></i>
+                    </button>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-800">🗺️ Wafer Test Analytics</h1>
+                        <p class="text-sm text-gray-600">KGD map data analysis and defect pattern recognition</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-500">Semiconductor Value Chain ERP v5.0</span>
+                    <button onclick="generateReport()" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
+                        <i class="fas fa-file-pdf mr-2"></i>Generate Report
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- File Upload Section -->
+        <div class="bg-white p-6 rounded-lg shadow border mb-8">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">📁 Upload KGD Map Data</h2>
+            <div class="flex flex-wrap gap-4 items-center">
+                <button id="upload-zip" class="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                    <i class="fas fa-file-archive mr-2"></i>Upload ZIP Files
+                </button>
+                <button id="upload-folder" class="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
+                    <i class="fas fa-folder-open mr-2"></i>Select Folder
+                </button>
+                <button id="demo-data" class="px-6 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors">
+                    <i class="fas fa-play mr-2"></i>Load Demo Data
+                </button>
+                <span class="text-sm text-gray-600">Supports: .zip files with KGD map data</span>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading-state" class="hidden text-center py-12">
+            <div class="loader mx-auto mb-4"></div>
+            <p class="text-gray-600">Processing KGD map data...</p>
+            <p id="progress-text" class="text-sm text-gray-500 mt-2"></p>
+        </div>
+
+        <!-- No Data State -->
+        <div id="no-data" class="text-center text-gray-500 py-12">
+            <i class="fas fa-microchip text-6xl mb-4"></i>
+            <p class="text-lg font-medium">Upload KGD map data to get started</p>
+            <p class="text-sm">Select ZIP files containing wafer map data from CP/EDS test</p>
+        </div>
+
+        <!-- Analysis Dashboard -->
+        <div id="dashboard" class="hidden space-y-8">
+            <!-- Lot Selection -->
+            <div class="bg-white p-6 rounded-lg shadow border">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-gray-800">📋 Lot Selection</h2>
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" id="search-box" placeholder="Search by Lot ID..." class="pl-10 pr-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                </div>
+                <div id="lot-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-64 overflow-y-auto">
+                    <!-- Lot items will be populated here -->
+                </div>
+            </div>
+
+            <!-- Selected Lot Analysis -->
+            <div id="lot-analysis" class="hidden">
+                <!-- Lot Header -->
+                <div class="bg-white p-6 rounded-lg shadow border mb-6">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h2 id="lot-id-header" class="text-2xl font-bold text-gray-800"></h2>
+                            <div class="flex items-center space-x-4 text-gray-500 mt-2">
+                                <span><i class="fas fa-tag mr-1"></i> Product: <strong id="product-id" class="text-gray-700"></strong></span>
+                                <span><i class="fas fa-server mr-1"></i> Test Site: <strong id="test-site" class="text-gray-700"></strong></span>
+                                <span><i class="far fa-calendar-alt mr-1"></i> Date: <strong id="timestamp" class="text-gray-700"></strong></span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-gray-500">Total Wafers</p>
+                            <p id="total-wafers" class="text-2xl font-bold text-blue-600">--</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <h3 class="text-sm font-medium text-gray-500">Lot Average Yield</h3>
+                        <p id="avg-yield" class="text-2xl font-bold text-green-600 mt-1">--</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <h3 class="text-sm font-medium text-gray-500">Total Dies</h3>
+                        <p id="total-dies" class="text-2xl font-bold text-gray-800 mt-1">--</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <h3 class="text-sm font-medium text-gray-500">Lowest Yield</h3>
+                        <p id="min-yield" class="text-xl font-bold text-red-600 mt-1">--</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <h3 class="text-sm font-medium text-gray-500">Highest Yield</h3>
+                        <p id="max-yield" class="text-xl font-bold text-blue-600 mt-1">--</p>
+                    </div>
+                </div>
+
+                <!-- Main Analysis Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                    <!-- Left Panel - Yield Chart and Wafer List -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <!-- Yield Chart -->
+                        <div class="bg-white p-6 rounded-lg shadow border">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4">📊 Lot Yield Distribution</h3>
+                            <div class="h-64">
+                                <canvas id="yield-chart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Wafer List -->
+                        <div class="bg-white p-6 rounded-lg shadow border">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4">📋 Wafer List</h3>
+                            <div id="wafer-list" class="max-h-48 overflow-y-auto">
+                                <!-- Wafer list will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Panel - Wafer Map and Pattern Analysis -->
+                    <div class="lg:col-span-3 space-y-6">
+                        <!-- Wafer Map -->
+                        <div class="bg-white p-6 rounded-lg shadow border">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 id="map-title" class="text-lg font-semibold text-gray-800">🗺️ Wafer Map</h3>
+                                <div class="flex items-center space-x-2">
+                                    <div id="outlier-badge" class="hidden items-center px-3 py-1 bg-red-100 text-red-700 text-sm font-semibold rounded-full">
+                                        <i class="fas fa-exclamation-triangle mr-2"></i> Anomaly Detected
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="wafer-map-container bg-gray-50 rounded-md border-2 border-dashed border-gray-300">
+                                <canvas id="wafer-map-canvas"></canvas>
+                            </div>
+                            <p id="yield-info" class="text-center text-sm text-gray-600 mt-2"></p>
+                        </div>
+
+                        <!-- Pattern Analysis -->
+                        <div class="bg-white p-6 rounded-lg shadow border">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4">🔍 Defect Pattern Analysis</h3>
+                            <div id="pattern-analysis" class="space-y-4">
+                                <!-- Pattern analysis results will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Deep Analysis Section -->
+                <div class="bg-white p-6 rounded-lg shadow border mt-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">📈 Deep Analysis & Recommendations</h3>
+                    <div id="deep-analysis">
+                        <!-- Deep analysis content will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Global variables
+        let lotDataCache = {};
+        let selectedLotId = null;
+        let selectedWaferId = null;
+        let yieldChart = null;
+        let waferMapCtx = null;
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Wafer Test Analytics page loaded');
+            initializeEventListeners();
+        });
+
+        function initializeEventListeners() {
+            // File upload buttons
+            document.getElementById('upload-zip').addEventListener('click', () => createFileInput('zip'));
+            document.getElementById('upload-folder').addEventListener('click', () => createFileInput('folder'));
+            document.getElementById('demo-data').addEventListener('click', loadDemoData);
+
+            // Search functionality
+            document.getElementById('search-box').addEventListener('keyup', renderLotList);
+        }
+
+        function createFileInput(type) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.multiple = true;
+            
+            if (type === 'folder') {
+                input.webkitdirectory = true;
+                input.directory = true;
+            } else {
+                input.accept = '.zip';
+            }
+            
+            input.addEventListener('change', (event) => {
+                handleFileUpload(event.target.files);
+            });
+            
+            input.click();
+        }
+
+        async function handleFileUpload(files) {
+            if (files.length === 0) return;
+
+            showLoadingState();
+            lotDataCache = {};
+            
+            const zipFiles = Array.from(files).filter(file => 
+                file.name.toLowerCase().endsWith('.zip')
+            );
+            
+            let processedCount = 0;
+            const progressText = document.getElementById('progress-text');
+            
+            for (const file of zipFiles) {
+                try {
+                    const lotData = await parseZipFile(file);
+                    if (lotData) {
+                        lotDataCache[lotData.lotId] = lotData;
+                    }
+                } catch (error) {
+                    console.error(`Error processing ${file.name}:`, error);
+                }
+                processedCount++;
+                if (progressText) {
+                    progressText.textContent = `${processedCount} / ${zipFiles.length} files processed`;
+                }
+            }
+            
+            hideLoadingState();
+            renderLotList();
+        }
+
+        async function parseZipFile(file) {
+            const parts = file.name.replace('.zip', '').split('_');
+            if (parts.length < 4) return null;
+
+            const lotId = parts[1];
+            const lotData = {
+                fileName: file.name,
+                productId: parts[0],
+                lotId: lotId,
+                timestamp: parts[2],
+                testSite: parts[3],
+                wafers: [],
+                summary: {}
+            };
+
+            try {
+                const zip = await JSZip.loadAsync(file);
+                
+                // Parse FAR file for summary data
+                const farFileName = Object.keys(zip.files).find(name => 
+                    name.toUpperCase().endsWith('.FAR')
+                );
+                if (farFileName) {
+                    const farContent = await zip.files[farFileName].async('text');
+                    lotData.summary = parseFarFile(farContent);
+                }
+
+                // Parse wafer files
+                const waferFiles = Object.keys(zip.files).filter(name => 
+                    /\.\d{2}$/.test(name.toUpperCase())
+                );
+                
+                for (const wfName of waferFiles) {
+                    const waferContent = await zip.files[wfName].async('text');
+                    const waferInfo = parseWaferFile(waferContent);
+                    lotData.wafers.push(waferInfo);
+                }
+                
+                lotData.wafers.sort((a, b) => a.slotNo - b.slotNo);
+                return lotData;
+            } catch (error) {
+                console.error('Error parsing ZIP file:', error);
+                return null;
+            }
+        }
+
+        function parseFarFile(content) {
+            const lines = content.split('\n').filter(line => line.trim() !== '');
+            return lines.slice(4).map(line => {
+                const parts = line.trim().split(/\s+/);
+                return { 
+                    mapping: parts[0], 
+                    waferId: parts[1], 
+                    pass: parseInt(parts[2], 10) 
+                };
+            });
+        }
+
+        function parseWaferFile(content) {
+            const lines = content.split('\n');
+            const header = {};
+            const mapData = [];
+            let isMap = false;
+
+            lines.forEach(line => {
+                if (line.includes(':')) {
+                    const [key, value] = line.split(':', 2);
+                    header[key.trim()] = value.trim();
+                } else if (line.trim().startsWith('.')) {
+                    isMap = true;
+                    mapData.push(line.trim());
+                } else if (isMap && line.trim() !== '') {
+                    mapData.push(line.trim());
+                }
+            });
+
+            const totalDie = parseInt(header['Total test die'] || 0, 10);
+            const passDie = parseInt(header['Pass Die'] || 0, 10);
+            const yieldValue = totalDie > 0 ? (passDie / totalDie) * 100 : 0;
+
+            return {
+                slotNo: parseInt(header['Slot No'] || 0, 10),
+                waferId: header['Wafer ID'],
+                totalDie,
+                passDie,
+                failDie: parseInt(header['Fail Die'] || 0, 10),
+                yield: yieldValue,
+                map: mapData
+            };
+        }
+
+        function renderLotList() {
+            const lotListEl = document.getElementById('lot-list');
+            const searchBox = document.getElementById('search-box');
+            
+            if (!lotListEl) return;
+            
+            lotListEl.innerHTML = '';
+            const query = searchBox ? searchBox.value.toLowerCase() : '';
+            const lotIds = Object.keys(lotDataCache).filter(id => 
+                id.toLowerCase().includes(query)
+            );
+
+            if (lotIds.length === 0) {
+                lotListEl.innerHTML = '<div class="col-span-full p-4 text-center text-gray-500">No matching lots found.</div>';
+                return;
+            }
+
+            lotIds.forEach(lotId => {
+                const lot = lotDataCache[lotId];
+                const div = document.createElement('div');
+                div.className = 'p-4 border rounded-lg cursor-pointer hover:bg-blue-50 transition-colors';
+                div.dataset.lotId = lotId;
+                div.innerHTML = `
+                    <h3 class="font-bold text-blue-600">${lot.lotId}</h3>
+                    <p class="text-sm text-gray-500">${lot.productId}</p>
+                    <p class="text-sm text-gray-500">${lot.fileName}</p>
+                    <p class="text-xs text-gray-400 mt-1">${lot.wafers.length} wafers</p>
+                `;
+                div.addEventListener('click', () => {
+                    selectLot(lotId);
+                });
+                lotListEl.appendChild(div);
+            });
+        }
+
+        function selectLot(lotId) {
+            selectedLotId = lotId;
+            renderDashboard();
+            
+            // Update active state
+            document.querySelectorAll('#lot-list > div').forEach(el => {
+                el.classList.remove('bg-blue-100', 'border-blue-300');
+            });
+            const selectedEl = document.querySelector(`[data-lot-id="${lotId}"]`);
+            if (selectedEl) {
+                selectedEl.classList.add('bg-blue-100', 'border-blue-300');
+            }
+        }
+
+        function renderDashboard() {
+            if (!selectedLotId) return;
+            
+            const lot = lotDataCache[selectedLotId];
+            const analysisDiv = document.getElementById('lot-analysis');
+            
+            if (analysisDiv) {
+                analysisDiv.classList.remove('hidden');
+            }
+
+            // Update header information
+            updateHeaderInfo(lot);
+            
+            // Update summary cards
+            updateSummaryCards(lot);
+            
+            // Render yield chart
+            renderYieldChart(lot);
+            
+            // Render wafer list
+            renderWaferList(lot);
+            
+            // Select first wafer by default
+            if (lot.wafers.length > 0) {
+                selectWafer(lot.wafers[0].waferId);
+            }
+        }
+
+        function updateHeaderInfo(lot) {
+            const elements = {
+                'lot-id-header': lot.lotId,
+                'product-id': lot.productId,
+                'test-site': lot.testSite,
+                'timestamp': lot.timestamp,
+                'total-wafers': lot.wafers.length
+            };
+
+            Object.entries(elements).forEach(([id, value]) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.textContent = value;
+                }
+            });
+        }
+
+        function updateSummaryCards(lot) {
+            const yields = lot.wafers.map(w => w.yield);
+            const avgYield = yields.reduce((a, b) => a + b, 0) / yields.length;
+            const sortedWafers = [...lot.wafers].sort((a, b) => a.yield - b.yield);
+            const totalDies = lot.wafers.reduce((sum, w) => sum + w.totalDie, 0);
+
+            const elements = {
+                'avg-yield': `${avgYield.toFixed(2)}%`,
+                'total-dies': totalDies.toLocaleString(),
+                'min-yield': `${sortedWafers[0].waferId} (${sortedWafers[0].yield.toFixed(1)}%)`,
+                'max-yield': `${sortedWafers[sortedWafers.length - 1].waferId} (${sortedWafers[sortedWafers.length - 1].yield.toFixed(1)}%)`
+            };
+
+            Object.entries(elements).forEach(([id, value]) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.textContent = value;
+                }
+            });
+        }
+
+        function renderYieldChart(lot) {
+            const chartCanvas = document.getElementById('yield-chart');
+            if (!chartCanvas) return;
+
+            if (yieldChart) {
+                yieldChart.destroy();
+            }
+
+            const yields = lot.wafers.map(w => w.yield);
+            const avgYield = yields.reduce((a, b) => a + b, 0) / yields.length;
+
+            yieldChart = new Chart(chartCanvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: lot.wafers.map(w => w.slotNo),
+                    datasets: [{
+                        label: 'Yield (%)',
+                        data: lot.wafers.map(w => w.yield),
+                        backgroundColor: lot.wafers.map(w => 
+                            w.yield < avgYield - 5 ? 'rgba(239, 68, 68, 0.6)' : 'rgba(59, 130, 246, 0.6)'
+                        ),
+                        borderColor: lot.wafers.map(w => 
+                            w.yield < avgYield - 5 ? 'rgb(239, 68, 68)' : 'rgb(59, 130, 246)'
+                        ),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { suggestedMin: Math.max(0, Math.min(...yields) - 5) }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: (ctx) => `Wafer #${ctx[0].label} (${lot.wafers[ctx[0].dataIndex].waferId})`
+                            }
+                        }
+                    },
+                    onClick: (evt, elements) => {
+                        if (elements.length > 0) {
+                            selectWafer(lot.wafers[elements[0].index].waferId);
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderWaferList(lot) {
+            const waferListEl = document.getElementById('wafer-list');
+            if (!waferListEl) return;
+
+            waferListEl.innerHTML = '';
+            const yields = lot.wafers.map(w => w.yield);
+            const avgYield = yields.reduce((a, b) => a + b, 0) / yields.length;
+            const sortedWafers = [...lot.wafers].sort((a, b) => a.yield - b.yield);
+
+            sortedWafers.forEach(wafer => {
+                const div = document.createElement('div');
+                div.className = 'flex justify-between p-2 border-b cursor-pointer hover:bg-gray-100';
+                div.dataset.waferId = wafer.waferId;
+                div.innerHTML = `
+                    <span>#${String(wafer.slotNo).padStart(2, '0')}: ${wafer.waferId}</span>
+                    <span class="font-semibold ${wafer.yield < avgYield - 5 ? 'text-red-600' : 'text-gray-700'}">${wafer.yield.toFixed(2)}%</span>
+                `;
+                div.addEventListener('click', () => selectWafer(wafer.waferId));
+                waferListEl.appendChild(div);
+            });
+        }
+
+        function selectWafer(waferId) {
+            selectedWaferId = waferId;
+            const lot = lotDataCache[selectedLotId];
+            const wafer = lot.wafers.find(w => w.waferId === waferId);
+            
+            if (!wafer) return;
+
+            // Update wafer map
+            renderWaferMap(wafer);
+            
+            // Update pattern analysis
+            analyzePatterns(wafer);
+            
+            // Update deep analysis
+            generateDeepAnalysis(wafer, lot);
+            
+            // Update active state
+            document.querySelectorAll('#wafer-list > div').forEach(el => {
+                el.classList.remove('bg-blue-100');
+            });
+            const selectedEl = document.querySelector(`[data-wafer-id="${waferId}"]`);
+            if (selectedEl) {
+                selectedEl.classList.add('bg-blue-100');
+            }
+        }
+
+        function renderWaferMap(wafer) {
+            const canvas = document.getElementById('wafer-map-canvas');
+            const titleEl = document.getElementById('map-title');
+            const yieldInfoEl = document.getElementById('yield-info');
+            
+            if (!canvas) return;
+
+            if (!waferMapCtx) {
+                waferMapCtx = canvas.getContext('2d');
+            }
+
+            // Set canvas size
+            const container = canvas.parentElement;
+            const size = Math.min(container.clientWidth, container.clientHeight) - 40;
+            canvas.width = size;
+            canvas.height = size;
+
+            // Clear canvas
+            waferMapCtx.clearRect(0, 0, size, size);
+
+            // Draw wafer map
+            drawWaferMap(wafer, size);
+
+            // Update title and info
+            if (titleEl) {
+                titleEl.textContent = `🗺️ Wafer Map - ${wafer.waferId}`;
+            }
+            if (yieldInfoEl) {
+                yieldInfoEl.textContent = `Yield: ${wafer.yield.toFixed(2)}% (${wafer.passDie}/${wafer.totalDie} dies)`;
+            }
+        }
+
+        function drawWaferMap(wafer, size) {
+            const ctx = waferMapCtx;
+            const centerX = size / 2;
+            const centerY = size / 2;
+            const radius = size / 2 - 20;
+
+            // Draw wafer outline
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Parse and draw die map
+            if (wafer.map && wafer.map.length > 0) {
+                drawDieMap(wafer.map, centerX, centerY, radius);
+            }
+        }
+
+        function drawDieMap(mapData, centerX, centerY, radius) {
+            const ctx = waferMapCtx;
+            const dieSize = radius / 25; // Approximate die size
+
+            mapData.forEach((line, rowIndex) => {
+                for (let colIndex = 0; colIndex < line.length; colIndex++) {
+                    const char = line[colIndex];
+                    if (char === ' ' || char === '.') continue;
+
+                    const x = centerX + (colIndex - line.length / 2) * dieSize;
+                    const y = centerY + (rowIndex - mapData.length / 2) * dieSize;
+
+                    // Determine color based on character
+                    let color = '#10B981'; // Green for pass
+                    if (char === 'F' || char === 'f') {
+                        color = '#EF4444'; // Red for fail
+                    } else if (char === 'S' || char === 's') {
+                        color = '#F59E0B'; // Yellow for skip
+                    }
+
+                    ctx.fillStyle = color;
+                    ctx.fillRect(x - dieSize/2, y - dieSize/2, dieSize, dieSize);
+                }
+            });
+        }
+
+        function analyzePatterns(wafer) {
+            const analysisEl = document.getElementById('pattern-analysis');
+            if (!analysisEl) return;
+
+            const patterns = detectPatterns(wafer);
+            
+            analysisEl.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-blue-800 mb-2">📊 Yield Analysis</h4>
+                        <p class="text-sm text-blue-700">Overall yield: <strong>${wafer.yield.toFixed(2)}%</strong></p>
+                        <p class="text-sm text-blue-700">Pass dies: <strong>${wafer.passDie}</strong></p>
+                        <p class="text-sm text-blue-700">Fail dies: <strong>${wafer.failDie}</strong></p>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-green-800 mb-2">🔍 Pattern Detection</h4>
+                        <p class="text-sm text-green-700">Primary pattern: <strong>${patterns.primary}</strong></p>
+                        <p class="text-sm text-green-700">Defect density: <strong>${patterns.density}</strong></p>
+                        <p class="text-sm text-green-700">Risk level: <strong>${patterns.risk}</strong></p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function detectPatterns(wafer) {
+            // Simple pattern detection logic
+            const failRate = (wafer.failDie / wafer.totalDie) * 100;
+            
+            let primary = 'Random';
+            let density = 'Low';
+            let risk = 'Low';
+
+            if (failRate > 20) {
+                primary = 'Systematic';
+                density = 'High';
+                risk = 'High';
+            } else if (failRate > 10) {
+                primary = 'Mixed';
+                density = 'Medium';
+                risk = 'Medium';
+            }
+
+            return { primary, density, risk };
+        }
+
+        function generateDeepAnalysis(wafer, lot) {
+            const analysisEl = document.getElementById('deep-analysis');
+            if (!analysisEl) return;
+
+            const avgYield = lot.wafers.reduce((sum, w) => sum + w.yield, 0) / lot.wafers.length;
+            const isOutlier = wafer.yield < avgYield - 10;
+
+            analysisEl.innerHTML = `
+                <div class="space-y-4">
+                    <div class="bg-${isOutlier ? 'red' : 'green'}-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-${isOutlier ? 'red' : 'green'}-800 mb-2">
+                            ${isOutlier ? '⚠️' : '✅'} Yield Assessment
+                        </h4>
+                        <p class="text-sm text-${isOutlier ? 'red' : 'green'}-700">
+                            ${isOutlier ? 'This wafer shows significantly lower yield compared to lot average.' : 'This wafer shows good yield performance.'}
+                        </p>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-gray-800 mb-2">📈 Recommendations</h4>
+                        <ul class="text-sm text-gray-700 space-y-1">
+                            <li>• Monitor similar patterns in future lots</li>
+                            <li>• Review CP/EDS test parameters</li>
+                            <li>• Check for systematic defects</li>
+                            <li>• Consider process optimization</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+
+            // Show outlier badge if needed
+            const badgeEl = document.getElementById('outlier-badge');
+            if (badgeEl) {
+                if (isOutlier) {
+                    badgeEl.classList.remove('hidden');
+                } else {
+                    badgeEl.classList.add('hidden');
+                }
+            }
+        }
+
+        function showLoadingState() {
+            const loadingEl = document.getElementById('loading-state');
+            const noDataEl = document.getElementById('no-data');
+            const dashboardEl = document.getElementById('dashboard');
+            
+            if (loadingEl) loadingEl.classList.remove('hidden');
+            if (noDataEl) noDataEl.classList.add('hidden');
+            if (dashboardEl) dashboardEl.classList.add('hidden');
+        }
+
+        function hideLoadingState() {
+            const loadingEl = document.getElementById('loading-state');
+            const noDataEl = document.getElementById('no-data');
+            const dashboardEl = document.getElementById('dashboard');
+            
+            if (loadingEl) loadingEl.classList.add('hidden');
+            if (noDataEl) noDataEl.classList.add('hidden');
+            if (dashboardEl) dashboardEl.classList.remove('hidden');
+        }
+
+        function loadDemoData() {
+            console.log('Loading demo data...');
+            // TODO: Implement demo data loading
+            alert('Demo data feature will be implemented in the next phase');
+        }
+
+        function generateReport() {
+            if (!selectedLotId) return;
+            
+            const lot = lotDataCache[selectedLotId];
+            console.log('Generating report for lot:', lot.lotId);
+            
+            // TODO: Implement comprehensive report generation
+            alert('Report generation feature will be implemented in the next phase');
+        }
+
+        function goBack() {
+            window.location.href = 'wafer map dashboard v5.0-integrated.html';
+        }
+    </script>
+</body>
+</html>f u n c t i o n   g o B a c k ( )   {   w i n d o w . l o c a t i o n . h r e f   =   ' w a f e r   m a p   d a s h b o a r d   v 5 . 0 - i n t e g r a t e d . h t m l ' ;   }  
+ 

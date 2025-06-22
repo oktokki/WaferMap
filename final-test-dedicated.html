@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Final Test Analytics - Semiconductor Value Chain ERP</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔬</text></svg>">
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.1.0/chartjs-plugin-annotation.min.js"></script>
+    
+    <!-- Fonts and Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body class="text-slate-800">
+    <div id="dashboard-page" class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-white px-6 py-3 border-b flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <button onclick="goBack()" class="text-gray-600 hover:text-gray-800 transition-colors">
+                    <i class="fas fa-arrow-left text-xl"></i>
+                </button>
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800">✅ Final Test Analytics</h1>
+                    <p class="text-sm text-gray-600">Final test lotSumTXT and STDF data analysis</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="text-sm text-gray-500">Semiconductor Value Chain ERP v5.0</span>
+                <button onclick="generateReport()" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
+                    <i class="fas fa-file-pdf mr-2"></i>Generate Report
+                </button>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav id="main-tabs" class="flex border-b bg-slate-50">
+            <button data-tab="summary" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300 active">Summary</button>
+            <button data-tab="map-analysis" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">MAP분석</button>
+            <button data-tab="test-analysis" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">Test Analysis</button>
+            <button data-tab="binning-analysis" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">Binning Analysis</button>
+            <button data-tab="risk-assessment" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">RISK평가</button>
+            <button data-tab="final-test" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">Final Test</button>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="p-6">
+            <!-- Summary Tab -->
+            <div id="summary-tab" class="tab-content">
+                <div class="mb-6">
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">📊 Wafer Map Dashboard Overview</h1>
+                    <p class="text-gray-600">Comprehensive semiconductor wafer testing and analysis platform</p>
+                </div>
+
+                <!-- Quick Stats Overview -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-blue-100 rounded-lg">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Total Files</p>
+                                <p id="summary-total-files" class="text-2xl font-bold text-gray-900">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-green-100 rounded-lg">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Overall Yield</p>
+                                <p id="summary-overall-yield" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-purple-100 rounded-lg">
+                                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Total Lots</p>
+                                <p id="summary-total-lots" class="text-2xl font-bold text-gray-900">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-yellow-100 rounded-lg">
+                                <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Last Updated</p>
+                                <p id="summary-last-updated" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Welcome Message -->
+                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200">
+                    <h2 class="text-xl font-semibold text-blue-800 mb-3">🚀 Welcome to Wafer Map Dashboard v4.1</h2>
+                    <p class="text-blue-700 mb-4">
+                        This dashboard provides comprehensive analysis tools for semiconductor wafer testing data. 
+                        Upload your STDF summary files to get started with detailed analytics.
+                    </p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div class="bg-white p-3 rounded border">
+                            <h3 class="font-semibold text-gray-800 mb-1">📁 File Upload</h3>
+                            <p class="text-gray-600">Upload .lotSumTXT files in the Final Test tab</p>
+                        </div>
+                        <div class="bg-white p-3 rounded border">
+                            <h3 class="font-semibold text-gray-800 mb-1">📊 Analysis</h3>
+                            <p class="text-gray-600">View detailed test and binning analysis</p>
+                        </div>
+                        <div class="bg-white p-3 rounded border">
+                            <h3 class="font-semibold text-gray-800 mb-1">📈 Reports</h3>
+                            <p class="text-gray-600">Export comprehensive reports and charts</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MAP Analysis Tab -->
+            <div id="map-analysis-tab" class="tab-content hidden">
+                <div class="mb-6">
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">🗺️ Wafer Map Analysis</h1>
+                    <p class="text-gray-600">Visual wafer map analysis and defect pattern recognition</p>
+                </div>
+
+                <!-- Map Analysis Controls -->
+                <div class="mb-6 p-4 bg-indigo-50 rounded-lg">
+                    <div class="flex flex-wrap gap-4 items-center">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Map Type</label>
+                            <select id="map-type-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="yield">Yield Map</option>
+                                <option value="defect">Defect Map</option>
+                                <option value="bin">Bin Map</option>
+                                <option value="site">Site Map</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Wafer Size</label>
+                            <select id="wafer-size-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="6">6 inch</option>
+                                <option value="8">8 inch</option>
+                                <option value="12" selected>12 inch</option>
+                                <option value="18">18 inch</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Color Scheme</label>
+                            <select id="color-scheme-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="standard">Standard</option>
+                                <option value="heat">Heat Map</option>
+                                <option value="rainbow">Rainbow</option>
+                                <option value="grayscale">Grayscale</option>
+                            </select>
+                        </div>
+                        <button id="refresh-map-analysis" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">
+                            🔄 Refresh Map
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Wafer Map Display -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                    <!-- Main Wafer Map -->
+                    <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📊 Wafer Map Visualization</h3>
+                        <div id="wafer-map-container" class="h-96 flex items-center justify-center text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+                            <div class="text-center">
+                                <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 4m0 13V4m-6 3l6-3"></path>
+                                </svg>
+                                <p class="text-lg font-medium">Upload files to view wafer map</p>
+                                <p class="text-sm text-gray-400">Select files in the Final Test tab to generate wafer map visualization</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Map Statistics -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📈 Map Statistics</h3>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Total Sites</span>
+                                <span id="map-total-sites" class="font-semibold">--</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Pass Sites</span>
+                                <span id="map-pass-sites" class="font-semibold text-green-600">--</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Fail Sites</span>
+                                <span id="map-fail-sites" class="font-semibold text-red-600">--</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Yield %</span>
+                                <span id="map-yield-percent" class="font-semibold text-blue-600">--</span>
+                            </div>
+                            <hr class="my-4">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Defect Density</span>
+                                <span id="map-defect-density" class="font-semibold">--</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Cluster Score</span>
+                                <span id="map-cluster-score" class="font-semibold">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Defect Pattern Analysis -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Defect Distribution -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">🎯 Defect Distribution</h3>
+                        <div id="defect-distribution-chart" class="h-64 flex items-center justify-center text-gray-500">
+                            <p>Chart will be displayed here</p>
+                        </div>
+                    </div>
+
+                    <!-- Spatial Analysis -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📍 Spatial Analysis</h3>
+                        <div id="spatial-analysis-chart" class="h-64 flex items-center justify-center text-gray-500">
+                            <p>Chart will be displayed here</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pattern Recognition Results -->
+                <div class="bg-white rounded-lg shadow border">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">🔍 Pattern Recognition Results</h3>
+                    </div>
+                    <div class="p-6">
+                        <div id="pattern-results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <!-- Pattern results will be populated here -->
+                            <div class="text-center text-gray-500">
+                                <p>Upload files to analyze defect patterns</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Analysis Tab -->
+            <div id="test-analysis-tab" class="tab-content hidden">
+                <div class="mb-6">
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">🔬 Test Analysis Dashboard</h1>
+                    <p class="text-gray-600">Comprehensive test performance analysis and optimization insights</p>
+                </div>
+
+                <!-- Test Analysis Controls -->
+                <div class="mb-6 p-4 bg-blue-50 rounded-lg">
+                    <div class="flex flex-wrap gap-4 items-center">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Test Type Filter</label>
+                            <select id="test-type-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="all">All Tests</option>
+                                <option value="dc">DC Tests</option>
+                                <option value="ac">AC Tests</option>
+                                <option value="functional">Functional Tests</option>
+                                <option value="parametric">Parametric Tests</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Time Range</label>
+                            <select id="time-range-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="7d">Last 7 Days</option>
+                                <option value="30d">Last 30 Days</option>
+                                <option value="90d">Last 90 Days</option>
+                                <option value="all">All Time</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Device Filter</label>
+                            <select id="device-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="all">All Devices</option>
+                            </select>
+                        </div>
+                        <button id="refresh-test-analysis" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
+                            🔄 Refresh Analysis
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Test Performance Overview -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-green-100 rounded-lg">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Overall Yield</p>
+                                <p id="overall-yield" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-blue-100 rounded-lg">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Test Time</p>
+                                <p id="avg-test-time" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-yellow-100 rounded-lg">
+                                <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Failure Rate</p>
+                                <p id="failure-rate" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-purple-100 rounded-lg">
+                                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Test Count</p>
+                                <p id="total-tests" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test Analysis Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Test Yield Trend -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📈 Test Yield Trend</h3>
+                        <div id="test-yield-chart" class="h-64 flex items-center justify-center text-gray-500">
+                            <p>Chart will be displayed here</p>
+                        </div>
+                    </div>
+
+                    <!-- Test Failure Distribution -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">🎯 Test Failure Distribution</h3>
+                        <div id="test-failure-chart" class="h-64 flex items-center justify-center text-gray-500">
+                            <p>Chart will be displayed here</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test Performance Table -->
+                <div class="bg-white rounded-lg shadow border">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">📊 Test Performance Details</h3>
+                    </div>
+                    <div class="">
+                        <table id="test-performance-table" class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Test Name</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Yield (%)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fail Count</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Time (ms)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="test-performance-tbody" class="bg-white divide-y divide-gray-200">
+                                <!-- Test rows will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Test Optimization Recommendations -->
+                <div class="mt-6 bg-white rounded-lg shadow border">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">💡 Test Optimization Recommendations</h3>
+                    </div>
+                    <div id="test-recommendations" class="p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Recommendations will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Binning Analysis Tab -->
+            <div id="binning-analysis-tab" class="tab-content hidden">
+                <div class="mb-6">
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">📦 Binning Analysis Dashboard</h1>
+                    <p class="text-gray-600">Advanced binning analysis and yield optimization insights</p>
+                </div>
+
+                <!-- Binning Analysis Controls -->
+                <div class="mb-6 p-4 bg-green-50 rounded-lg">
+                    <div class="flex flex-wrap gap-4 items-center">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Bin Category</label>
+                            <select id="bin-category-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="all">All Bins</option>
+                                <option value="pass">Pass Bins</option>
+                                <option value="fail">Fail Bins</option>
+                                <option value="marginal">Marginal Bins</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Analysis Period</label>
+                            <select id="bin-period-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="7d">Last 7 Days</option>
+                                <option value="30d">Last 30 Days</option>
+                                <option value="90d">Last 90 Days</option>
+                                <option value="all">All Time</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+                            <select id="bin-sort-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="count">Count</option>
+                                <option value="percentage">Percentage</option>
+                                <option value="trend">Trend</option>
+                            </select>
+                        </div>
+                        <button id="refresh-binning-analysis" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm">
+                            🔄 Refresh Analysis
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Binning Overview Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-green-100 rounded-lg">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Total Bins</p>
+                                <p id="total-bins" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-blue-100 rounded-lg">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Pass Rate</p>
+                                <p id="pass-rate" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-red-100 rounded-lg">
+                                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Fail Rate</p>
+                                <p id="fail-rate" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-yellow-100 rounded-lg">
+                                <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Marginal Rate</p>
+                                <p id="marginal-rate" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Binning Analysis Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Bin Distribution Chart -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📊 Bin Distribution</h3>
+                        <div id="bin-distribution-chart" class="h-64 flex items-center justify-center text-gray-500">
+                            <p>Chart will be displayed here</p>
+                        </div>
+                    </div>
+
+                    <!-- Bin Trend Analysis -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📈 Bin Trend Analysis</h3>
+                        <div id="bin-trend-chart" class="h-64 flex items-center justify-center text-gray-500">
+                            <p>Chart will be displayed here</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Binning Details Table -->
+                <div class="bg-white rounded-lg shadow border">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">📋 Binning Details</h3>
+                    </div>
+                    <div class="">
+                        <table id="binning-details-table" class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bin Code</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Count</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Percentage</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trend</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="binning-details-tbody" class="bg-white divide-y divide-gray-200">
+                                <!-- Bin rows will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Binning Optimization Insights -->
+                <div class="mt-6 bg-white rounded-lg shadow border">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">💡 Binning Optimization Insights</h3>
+                    </div>
+                    <div id="binning-insights" class="p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Yield Improvement Opportunities -->
+                            <div class="bg-blue-50 p-4 rounded-lg">
+                                <h4 class="font-semibold text-blue-800 mb-2">🎯 Yield Improvement Opportunities</h4>
+                                <div id="yield-opportunities" class="space-y-2">
+                                    <!-- Opportunities will be populated here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Bin Consolidation Suggestions -->
+                            <div class="bg-green-50 p-4 rounded-lg">
+                                <h4 class="font-semibold text-green-800 mb-2">🔧 Bin Consolidation Suggestions</h4>
+                                <div id="consolidation-suggestions" class="space-y-2">
+                                    <!-- Suggestions will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RISK Assessment Tab -->
+            <div id="risk-assessment-tab" class="tab-content hidden">
+                <div class="mb-6">
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">⚠️ Risk Assessment Dashboard</h1>
+                    <p class="text-gray-600">Comprehensive risk analysis and quality control monitoring</p>
+                </div>
+
+                <!-- Risk Assessment Controls -->
+                <div class="mb-6 p-4 bg-red-50 rounded-lg">
+                    <div class="flex flex-wrap gap-4 items-center">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Risk Level</label>
+                            <select id="risk-level-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="all">All Levels</option>
+                                <option value="low">Low Risk</option>
+                                <option value="medium">Medium Risk</option>
+                                <option value="high">High Risk</option>
+                                <option value="critical">Critical Risk</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Time Period</label>
+                            <select id="risk-period-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="24h">Last 24 Hours</option>
+                                <option value="7d">Last 7 Days</option>
+                                <option value="30d">Last 30 Days</option>
+                                <option value="90d">Last 90 Days</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Risk Category</label>
+                            <select id="risk-category-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="all">All Categories</option>
+                                <option value="yield">Yield Risk</option>
+                                <option value="quality">Quality Risk</option>
+                                <option value="process">Process Risk</option>
+                                <option value="equipment">Equipment Risk</option>
+                            </select>
+                        </div>
+                        <button id="refresh-risk-assessment" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm">
+                            🔄 Refresh Assessment
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Risk Overview Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-green-100 rounded-lg">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Low Risk</p>
+                                <p id="low-risk-count" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-yellow-100 rounded-lg">
+                                <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Medium Risk</p>
+                                <p id="medium-risk-count" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-orange-100 rounded-lg">
+                                <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">High Risk</p>
+                                <p id="high-risk-count" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-red-100 rounded-lg">
+                                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Critical Risk</p>
+                                <p id="critical-risk-count" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Risk Analysis Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Risk Trend Analysis -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📈 Risk Trend Analysis</h3>
+                        <div id="risk-trend-chart" class="h-64 flex items-center justify-center text-gray-500">
+                            <p>Chart will be displayed here</p>
+                        </div>
+                    </div>
+
+                    <!-- Risk Distribution -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">🎯 Risk Distribution</h3>
+                        <div id="risk-distribution-chart" class="h-64 flex items-center justify-center text-gray-500">
+                            <p>Chart will be displayed here</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Risk Details Table -->
+                <div class="bg-white rounded-lg shadow border">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">📋 Risk Assessment Details</h3>
+                    </div>
+                    <div class="">
+                        <table id="risk-details-table" class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Risk ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Level</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Probability</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Impact</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="risk-details-tbody" class="bg-white divide-y divide-gray-200">
+                                <!-- Risk rows will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Risk Mitigation Recommendations -->
+                <div class="mt-6 bg-white rounded-lg shadow border">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">💡 Risk Mitigation Recommendations</h3>
+                    </div>
+                    <div id="risk-mitigation" class="p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Immediate Actions -->
+                            <div class="bg-red-50 p-4 rounded-lg">
+                                <h4 class="font-semibold text-red-800 mb-2">🚨 Immediate Actions Required</h4>
+                                <div id="immediate-actions" class="space-y-2">
+                                    <!-- Immediate actions will be populated here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Preventive Measures -->
+                            <div class="bg-blue-50 p-4 rounded-lg">
+                                <h4 class="font-semibold text-blue-800 mb-2">🛡️ Preventive Measures</h4>
+                                <div id="preventive-measures" class="space-y-2">
+                                    <!-- Preventive measures will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Final Test Tab -->
+            <div id="final-test-tab" class="tab-content hidden">
+                <!-- File Upload Section -->
+                <div class="mb-4">
+                    <button id="uploadBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        파일 선택 및 업로드
+                    </button>
+                    <button id="debugBtn" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded ml-2">
+                        🔍 Debug Sequences
+                    </button>
+                    <button id="debugDataBtn" class="bg-orange-500 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded ml-2">
+                        🔬 Debug Parsed Data
+                    </button>
+                </div>
+
+                <!-- File Input -->
+                <div class="mb-6">
+                    <label class="block mb-2 font-semibold">Final Test Summary 파일 업로드 (.lotSumTXT)</label>
+                    <input type="file" id="final-test-upload" accept=".lotSumTXT" multiple class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                    <p class="text-xs text-slate-500 mt-1">여러 Final Test 요약 파일을 업로드할 수 있습니다.</p>
+                </div>
+
+                <!-- Loading State -->
+                <div id="final-test-loading" class="hidden text-center py-8">
+                    <div class="loader mx-auto"></div>
+                    <p class="mt-4 text-slate-600">파일을 분석 중입니다...</p>
+                </div>
+
+                <!-- Results Section -->
+                <div id="final-test-result" class="hidden">
+                    <!-- Multi-File Summary -->
+                    <div id="multi-file-summary" class="mb-6 p-4 bg-blue-50 rounded-lg">
+                        <h2 class="text-lg font-bold mb-2 text-blue-800">📊 Multi-File Summary</h2>
+                        <div id="file-summary-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4"></div>
+                        <div id="aggregated-yield" class="bg-white p-3 rounded shadow">
+                            <h3 class="font-semibold mb-2">Aggregated Yield Analysis</h3>
+                            <div id="aggregated-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+                            <div class="mt-4 flex gap-2">
+                                <button id="export-summary" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+                                    📊 Export Summary
+                                </button>
+                                <button id="export-details" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
+                                    📋 Export Details
+                                </button>
+                                <button id="export-comparison" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm">
+                                    📈 Export Comparison
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Lot Comparison -->
+                    <div id="lot-comparison" class="mb-6 p-4 bg-green-50 rounded-lg">
+                        <div class="flex justify-between items-center mb-3">
+                            <h2 class="text-lg font-bold text-green-800">📈 Lot Comparison</h2>
+                            <div class="flex items-center space-x-2">
+                                <button id="reset-table-width" class="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600">
+                                    🔄 Reset Width
+                                </button>
+                                <button id="fit-content-width" class="px-3 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600">
+                                    📏 Fit Content
+                                </button>
+                                <button id="print-friendly-width" class="px-3 py-1 bg-purple-500 text-white rounded text-xs hover:bg-purple-600">
+                                    🖨️ Print Width
+                                </button>
+                            </div>
+                        </div>
+                        <div id="lot-comparison-table-container" class="bg-white rounded-lg border relative">
+                            <div class="resize-handle absolute right-0 top-0 bottom-0 w-1 bg-gray-300 cursor-col-resize hover:bg-blue-400 transition-colors"></div>
+                            <div class="overflow-x-auto" style="max-width: 1200px; min-width: 800px;">
+                                <table id="lot-comparison-table" class="w-full text-sm table-fixed">
+                                    <!-- Table content -->
+                                </table>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-xs text-gray-600">
+                            💡 <strong>Tip:</strong> Drag the right edge to resize table width. Use buttons above for preset widths.
+                        </div>
+                    </div>
+                    
+                    <!-- Selected Lot Details Section -->
+                    <div id="selected-lot-section" class="mt-6 hidden">
+                        <!-- Lot Specific Analytics -->
+                        <div class="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl border border-gray-200 shadow-lg">
+                            <h2 class="text-xl font-bold mb-6 text-gray-800 flex items-center">
+                                <span class="text-3xl mr-3">🔍</span>
+                                Lot Specific Analytics
+                            </h2>
+                            
+                            <!-- Zone 1: Lot Info, Test Summary, Quality Metrics -->
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                                <div id="selected-lot-info"></div>
+                                <div id="selected-lot-summary"></div>
+                                <div id="selected-lot-quality"></div>
+                            </div>
+                            
+                            <!-- Zone 2: Re-test Flow, Failure Analysis -->
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div id="selected-lot-retest-flow"></div>
+                                <div id="selected-lot-failure-analysis"></div>
+                            </div>
+                        </div>
+
+                        <!-- Lot Hard Bin Sorting Table -->
+                        <div id="hard-bin-table-container" class="mt-6">
+                            <div class="bg-white rounded-lg shadow border">
+                                <div class="p-6 border-b">
+                                    <h3 class="text-lg font-semibold text-gray-800">📊 Hard Bin Sorting Table</h3>
+                                </div>
+                                <div class="">
+                                    <table id="hard-bin-table" class="w-full">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bin Code</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Count</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Percentage</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="hard-bin-tbody" class="bg-white divide-y divide-gray-200">
+                                            <!-- Hard bin data will be populated here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Detailed Test Results by Site -->
+                        <div class="mt-6">
+                            <h2 class="text-lg font-bold mb-2 text-gray-700">📋 Test 결과 상세 (Site별)</h2>
+                            <div id="test-stage-tabs" class="border-b border-gray-200 mb-2 flex space-x-4">
+                                <!-- Test stage tabs will be injected here -->
+                            </div>
+                            <div id="test-results-container">
+                                <!-- Test results tables will be injected here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Aggregated Enhanced Analytics -->
+                    <div id="enhanced-analytics" class="mt-6 mb-6 p-4 bg-purple-50 rounded-lg">
+                        <h2 class="text-lg font-bold mb-2 text-purple-800">🔬 Aggregated Enhanced Analytics</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div class="bg-white p-4 rounded shadow">
+                                <h3 class="font-semibold mb-2 text-purple-700">📈 Yield Trend Analysis</h3>
+                                <div id="trend-content"></div>
+                            </div>
+                            <div class="bg-white p-4 rounded shadow">
+                                <h3 class="font-semibold mb-2 text-purple-700">🎯 Failure Pattern Analysis</h3>
+                                <div id="pattern-content"></div>
+                            </div>
+                            <div class="bg-white p-4 rounded shadow">
+                                <h3 class="font-semibold mb-2 text-purple-700">🏭 Site Performance</h3>
+                                <div id="site-content"></div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-white p-4 rounded shadow">
+                                <h3 class="font-semibold mb-2 text-purple-700">🔗 Failure Correlation Analysis</h3>
+                                <div id="correlation-content"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Debug Information -->
+                <div id="debug-info" class="mt-4 p-4 bg-gray-100 rounded text-xs hidden">
+                    <h3 class="font-semibold mb-2">Debug Information:</h3>
+                    <pre id="debug-content"></pre>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- JavaScript Modules -->
+    <script type="module">
+        // Import modules
+        import { STDFFileHandler } from './js/STDFFileHandler.js';
+        import { Analytics } from './js/modules/Analytics.js';
+        import { UI } from './js/modules/UI.js';
+        import { FileUtils } from './js/utils/FileUtils.js';
+        import { CalculationUtils } from './js/utils/CalculationUtils.js';
+        import { TestAnalysis } from './js/modules/TestAnalysis.js';
+        import { BinningAnalysis } from './js/modules/BinningAnalysis.js';
+
+        window.TestAnalysis = TestAnalysis;
+        window.BinningAnalysis = BinningAnalysis;
+
+        // Global variables
+        let stdfHandler;
+        let allData = [];
+        let ui;
+
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('=== Initializing Wafer Map Dashboard v4.1 ===');
+            
+            // Initialize STDFFileHandler
+            if (typeof STDFFileHandler !== 'undefined') {
+                stdfHandler = new STDFFileHandler();
+                console.log('✅ STDFFileHandler initialized successfully');
+            } else {
+                console.error('❌ STDFFileHandler failed to load');
+                return;
+            }
+
+            // Initialize UI
+            ui = new UI();
+            console.log('✅ UI initialized successfully');
+
+            // Initialize global functions for backward compatibility
+            window.handleFileUpload = handleFileUpload;
+            window.selectLot = (lotNumber) => ui.selectLot(lotNumber);
+            window.getAggregatedAnalytics = () => Analytics.getAggregatedAnalytics(allData);
+            window.generateExportData = generateExportData;
+
+            console.log('✅ Application initialization complete');
+
+            // Initialize tab switching
+            initializeTabSwitching();
+        });
+
+        // File upload handler
+        async function handleFileUpload(files) {
+            console.log('=== File Upload Handler ===');
+            console.log('Files to process:', files.length);
+
+            // Clear previous data
+            allData = [];
+            
+            // Show loading state
+            ui.showLoadingState();
+
+            try {
+                // Process each file
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    console.log(`Processing file ${i + 1}/${files.length}: ${file.name}`);
+                    
+                    try {
+                        const data = await stdfHandler.loadFile(file);
+                        console.log(`File ${file.name} parse result:`, data);
+                        
+                        if (data && data.success) {
+                            allData.push(data);
+                            console.log(`File ${file.name} processed successfully`);
+                        } else {
+                            console.error(`Failed to process file: ${file.name} - ${data?.error || 'no data returned'}`);
+                        }
+                    } catch (fileError) {
+                        console.error(`Error processing file ${file.name}:`, fileError);
+                    }
+                }
+
+                console.log('All files processed. Total data entries:', allData.length);
+                
+                // Display results
+                if (allData.length > 0) {
+                    console.log('Displaying results...');
+                    
+                    try {
+                        // Get aggregated analytics
+                        const aggregatedAnalytics = Analytics.getAggregatedAnalytics(allData);
+                        console.log('Aggregated analytics:', aggregatedAnalytics);
+                        
+                        // Display results using UI module
+                        ui.displayMultiFileSummary(aggregatedAnalytics);
+                        
+                        // Transform data for analysis modules
+                        const transformedData = transformDataForAnalysis(allData);
+                        
+                        // Initialize new analysis modules
+                        const testAnalysis = new TestAnalysis();
+                        const binningAnalysis = new BinningAnalysis();
+                        
+                        // Load data into analysis modules
+                        testAnalysis.loadTestData(transformedData);
+                        binningAnalysis.loadBinningData(transformedData);
+                        
+                        // Populate device filters
+                        populateDeviceFilters(transformedData);
+                        
+                        // Make modules globally accessible
+                        window.testAnalysis = testAnalysis;
+                        window.binningAnalysis = binningAnalysis;
+                        
+                        console.log('✅ Test Analysis and Binning Analysis modules initialized');
+                        console.log('All displays completed successfully');
+                    } catch (displayError) {
+                        console.error('Error in display functions:', displayError);
+                        ui.showError(`Error displaying data: ${displayError.message}`);
+                    }
+                } else {
+                    console.error('No valid data found in uploaded files');
+                    ui.showError('No valid data found in uploaded files. Check console for details.');
+                }
+            } catch (e) {
+                console.error('Error processing files:', e);
+                ui.showError(`Error processing files: ${e.message}`);
+            } finally {
+                // Hide loading state
+                ui.hideLoadingState();
+            }
+        }
+
+        // Export data generator
+        function generateExportData(type) {
+            const aggregatedAnalytics = Analytics.getAggregatedAnalytics(allData);
+            const sequences = aggregatedAnalytics.testSequences || {};
+            
+            switch (type) {
+                case 'summary':
+                    return generateSummaryData(aggregatedAnalytics, sequences);
+                case 'details':
+                    return generateDetailsData(aggregatedAnalytics, sequences);
+                case 'comparison':
+                    return generateComparisonData(aggregatedAnalytics, sequences);
+                default:
+                    return [];
+            }
+        }
+
+        function generateSummaryData(aggregatedAnalytics, sequences) {
+            const summaryData = [];
+            summaryData.push(['Wafer Test Summary Report', '', '', '']);
+            summaryData.push(['Generated:', new Date().toLocaleString(), '', '']);
+            summaryData.push(['', '', '', '']);
+            
+            // Add summary statistics
+            summaryData.push(['Summary Statistics', '', '', '']);
+            summaryData.push(['Total Files', aggregatedAnalytics.totalFiles, '', '']);
+            summaryData.push(['Total Lots', Object.keys(sequences).length, '', '']);
+            summaryData.push(['Average Yield', aggregatedAnalytics.overallYield.toFixed(2) + '%', '', '']);
+            summaryData.push(['', '', '', '']);
+            
+            // Add lot details
+            summaryData.push(['Lot Details', '', '', '']);
+            summaryData.push(['Lot Number', 'Device', 'Lot Size', 'Yield (%)', 'Good', 'Fail']);
+            
+            Object.entries(sequences).forEach(([lotNumber, sequence]) => {
+                summaryData.push([
+                    lotNumber,
+                    sequence.device || 'N/A',
+                    sequence.totalInput,
+                    sequence.finalYield.toFixed(2) + '%',
+                    sequence.totalPass,
+                    sequence.totalFail
+                ]);
+            });
+            
+            return summaryData;
+        }
+
+        function generateDetailsData(aggregatedAnalytics, sequences) {
+            const detailsData = [];
+            detailsData.push(['Detailed Test Results Report', '', '', '', '', '', '']);
+            detailsData.push(['Generated:', new Date().toLocaleString(), '', '', '', '', '']);
+            detailsData.push(['', '', '', '', '', '', '']);
+            
+            // Add lot details
+            Object.entries(sequences).forEach(([lotNumber, sequence]) => {
+                detailsData.push(['', '', '', '', '', '', '']);
+                detailsData.push([`Lot: ${lotNumber}`, '', '', '', '', '', '']);
+                detailsData.push(['Device', sequence.device || 'N/A', '', '', '', '', '']);
+                detailsData.push(['Lot Size', sequence.totalInput, '', '', '', '', '']);
+                detailsData.push(['Final Yield', sequence.finalYield.toFixed(2) + '%', '', '', '', '', '']);
+                detailsData.push(['Total Pass', sequence.totalPass, '', '', '', '', '']);
+                detailsData.push(['Final Fail', sequence.totalFail, '', '', '', '', '']);
+            });
+            
+            return detailsData;
+        }
+
+        function generateComparisonData(aggregatedAnalytics, sequences) {
+            const comparisonData = [];
+            comparisonData.push(['Lot Comparison Report', '', '', '', '', '', '']);
+            comparisonData.push(['Generated:', new Date().toLocaleString(), '', '', '', '', '']);
+            comparisonData.push(['', '', '', '', '', '', '']);
+            
+            // Add comparison table
+            comparisonData.push(['Lot Number', 'Device', 'Lot Size', 'Yield (%)', 'Good', 'Fail', 'Status']);
+            
+            Object.entries(sequences).forEach(([lotNumber, sequence]) => {
+                const yieldStatus = sequence.finalYield >= 95 ? 'Excellent' : 
+                                   sequence.finalYield >= 90 ? 'Good' : 
+                                   sequence.finalYield >= 80 ? 'Fair' : 'Poor';
+                
+                comparisonData.push([
+                    lotNumber,
+                    sequence.device || 'N/A',
+                    sequence.totalInput,
+                    sequence.finalYield.toFixed(2) + '%',
+                    sequence.totalPass,
+                    sequence.totalFail,
+                    yieldStatus
+                ]);
+            });
+            
+            return comparisonData;
+        }
+
+        // Transform data for analysis modules
+        function transformDataForAnalysis(allData) {
+            const transformedData = [];
+            
+            allData.forEach(fileData => {
+                if (fileData.success && fileData.data) {
+                    const lotData = {
+                        lotNumber: fileData.data.lotInfo?.lotNumber || 'Unknown',
+                        device: fileData.data.lotInfo?.device || 'Unknown',
+                        testDate: fileData.data.lotInfo?.testDate || new Date().toISOString(),
+                        operator: fileData.data.lotInfo?.operator || 'Unknown',
+                        testResults: []
+                    };
+                    
+                    // Transform test results
+                    if (fileData.data.testResults && Array.isArray(fileData.data.testResults)) {
+                        fileData.data.testResults.forEach(test => {
+                            const testResult = {
+                                test: test.test || 'Unknown Test',
+                                result: test.result || 'UNKNOWN',
+                                time: test.time || 0,
+                                site1: test.site1 || 0,
+                                site2: test.site2 || 0,
+                                site3: test.site3 || 0,
+                                site4: test.site4 || 0,
+                                total: test.total || 0
+                            };
+                            lotData.testResults.push(testResult);
+                        });
+                    }
+                    
+                    transformedData.push(lotData);
+                }
+            });
+            
+            console.log('Transformed data for analysis:', transformedData);
+            return transformedData;
+        }
+
+        // Populate device filters
+        function populateDeviceFilters(transformedData) {
+            const devices = [...new Set(transformedData.map(lot => lot.device))].filter(device => device !== 'Unknown');
+            
+            // Populate Test Analysis device filter
+            const testDeviceFilter = document.getElementById('device-filter');
+            if (testDeviceFilter) {
+                testDeviceFilter.innerHTML = '<option value="all">All Devices</option>';
+                devices.forEach(device => {
+                    const option = document.createElement('option');
+                    option.value = device;
+                    option.textContent = device;
+                    testDeviceFilter.appendChild(option);
+                });
+            }
+            
+            console.log('Device filters populated:', devices);
+        }
+
+        // Tab switching logic
+        function initializeTabSwitching() {
+            const tabButtons = document.querySelectorAll('.main-tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetTab = this.getAttribute('data-tab');
+                    
+                    // Remove active class from all tabs
+                    tabButtons.forEach(btn => {
+                        btn.classList.remove('active');
+                        btn.classList.remove('border-blue-500');
+                        btn.classList.remove('text-blue-600');
+                        btn.classList.add('border-transparent');
+                        btn.classList.add('text-gray-500');
+                    });
+                    
+                    // Add active class to clicked tab
+                    this.classList.add('active');
+                    this.classList.add('border-blue-500');
+                    this.classList.add('text-blue-600');
+                    this.classList.remove('border-transparent');
+                    this.classList.remove('text-gray-500');
+                    
+                    // Hide all tab contents
+                    tabContents.forEach(content => {
+                        content.classList.add('hidden');
+                    });
+                    
+                    // Show target tab content
+                    const targetContent = document.getElementById(`${targetTab}-tab`);
+                    if (targetContent) {
+                        targetContent.classList.remove('hidden');
+                        
+                        // Trigger data refresh for analysis tabs
+                        if (targetTab === 'test-analysis' && window.testAnalysis) {
+                            console.log('Refreshing Test Analysis data...');
+                            window.testAnalysis.refreshAnalysis();
+                        } else if (targetTab === 'binning-analysis' && window.binningAnalysis) {
+                            console.log('Refreshing Binning Analysis data...');
+                            window.binningAnalysis.refreshAnalysis();
+                        }
+                    }
+                });
+            });
+        }
+
+        // Debug functions
+        window.debugParsedData = function() {
+            console.log('=== Debug Parsed Data ===');
+            console.log('Total files loaded:', allData.length);
+            
+            allData.forEach((fileData, index) => {
+                console.log(`\n--- File ${index + 1}: ${fileData.fileName} ---`);
+                console.log('File success:', fileData.success);
+                
+                if (fileData.success && fileData.data) {
+                    console.log('Lot Info:', fileData.data.lotInfo);
+                    console.log('Summary:', fileData.data.summary);
+                    console.log('Analytics:', fileData.data.analytics);
+                    console.log('Test Results Count:', fileData.data.testResults ? fileData.data.testResults.length : 0);
+                } else {
+                    console.log('File error:', fileData.error);
+                }
+            });
+        };
+
+        window.debugSequences = function() {
+            console.log('=== Debug Test Sequences ===');
+            const aggregatedAnalytics = Analytics.getAggregatedAnalytics(allData);
+            console.log('Test Sequences:', aggregatedAnalytics.testSequences);
+        };
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // File upload event listener
+            const fileInput = document.getElementById('final-test-upload');
+            if (fileInput) {
+                fileInput.addEventListener('change', function(e) {
+                    const files = Array.from(e.target.files);
+                    if (files.length > 0) {
+                        handleFileUpload(files);
+                    }
+                });
+            }
+
+            // Export buttons
+            const exportSummaryBtn = document.getElementById('export-summary');
+            const exportDetailsBtn = document.getElementById('export-details');
+            const exportComparisonBtn = document.getElementById('export-comparison');
+
+            if (exportSummaryBtn) {
+                exportSummaryBtn.addEventListener('click', function() {
+                    const data = generateExportData('summary');
+                    ui.exportToExcel(data, 'wafer-test-summary');
+                });
+            }
+
+            if (exportDetailsBtn) {
+                exportDetailsBtn.addEventListener('click', function() {
+                    const data = generateExportData('details');
+                    ui.exportToExcel(data, 'wafer-test-details');
+                });
+            }
+
+            if (exportComparisonBtn) {
+                exportComparisonBtn.addEventListener('click', function() {
+                    const data = generateExportData('comparison');
+                    ui.exportToExcel(data, 'wafer-test-comparison');
+                });
+            }
+
+            // Debug buttons
+            const debugBtn = document.getElementById('debugBtn');
+            const debugDataBtn = document.getElementById('debugDataBtn');
+
+            if (debugBtn) {
+                debugBtn.addEventListener('click', debugSequences);
+            }
+
+            if (debugDataBtn) {
+                debugDataBtn.addEventListener('click', debugParsedData);
+            }
+        });
+    </script>
+</body>
+</html>f u n c t i o n   g o B a c k ( )   {   w i n d o w . l o c a t i o n . h r e f   =   ' w a f e r   m a p   d a s h b o a r d   v 5 . 0 - i n t e g r a t e d . h t m l ' ;   }  
+ 

@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 1 Features Test - Wafer Map Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .feature-section {
+            margin-bottom: 40px;
+            padding: 25px;
+            border: 2px solid #ecf0f1;
+            border-radius: 10px;
+            background: #f8f9fa;
+        }
+        
+        .feature-section h2 {
+            color: #2c3e50;
+            margin-top: 0;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .file-upload-area {
+            border: 3px dashed #bdc3c7;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            background: white;
+            transition: all 0.3s ease;
+            margin: 20px 0;
+        }
+        
+        .file-upload-area:hover {
+            border-color: #3498db;
+            background: #f7f9fc;
+        }
+        
+        .file-upload-area.dragover {
+            border-color: #27ae60;
+            background: #e8f5e8;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .upload-btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+        
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        .supported-formats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        
+        .format-badge {
+            background: #e74c3c;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        
+        .format-badge.new {
+            background: #27ae60;
+        }
+        
+        .results-area {
+            margin-top: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .results-area h3 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+        
+        .json-display {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #3498db;
+        }
+        
+        .stat-label {
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .export-buttons {
+            margin: 20px 0;
+        }
+        
+        .export-btn {
+            background: #95a5a6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            transition: background 0.3s ease;
+        }
+        
+        .export-btn:hover {
+            background: #7f8c8d;
+        }
+        
+        .export-btn.json {
+            background: #e67e22;
+        }
+        
+        .export-btn.json:hover {
+            background: #d35400;
+        }
+        
+        .export-btn.summary {
+            background: #9b59b6;
+        }
+        
+        .export-btn.summary:hover {
+            background: #8e44ad;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Phase 1 Features Test</h1>
+            <p>Enhanced Data Integration - STDF & Excel File Parsing</p>
+        </div>
+        
+        <div class="content">
+            <!-- STDF Parser Test -->
+            <div class="feature-section">
+                <h2>📊 STDF Parser Test</h2>
+                <p>Test the new STDF file parsing capabilities including compressed files and multi-site data extraction.</p>
+                
+                <div class="supported-formats">
+                    <span class="format-badge new">.stdf</span>
+                    <span class="format-badge new">.stdf.gz</span>
+                </div>
+                
+                <div class="file-upload-area" id="stdfUploadArea">
+                    <p><strong>Drop STDF files here or click to select</strong></p>
+                    <p>Supports standard STDF files and compressed .stdf.gz files</p>
+                    <input type="file" id="stdfFileInput" class="file-input" accept=".stdf,.stdf.gz" multiple>
+                    <button class="upload-btn" onclick="document.getElementById('stdfFileInput').click()">
+                        📁 Select STDF Files
+                    </button>
+                </div>
+                
+                <div class="loading" id="stdfLoading">
+                    <div class="spinner"></div>
+                    <p>Parsing STDF file...</p>
+                </div>
+                
+                <div id="stdfResults" class="results-area" style="display: none;">
+                    <h3>STDF Parsing Results</h3>
+                    <div id="stdfStatus"></div>
+                    <div id="stdfStats" class="stats-grid"></div>
+                    <div class="export-buttons">
+                        <button class="export-btn json" onclick="exportSTDFData('json')">Export JSON</button>
+                        <button class="export-btn summary" onclick="exportSTDFData('summary')">Export Summary</button>
+                    </div>
+                    <div id="stdfData" class="json-display"></div>
+                </div>
+            </div>
+            
+            <!-- Excel Parser Test -->
+            <div class="feature-section">
+                <h2>📈 Excel Parser Test</h2>
+                <p>Test the new Excel file parsing for packaging reports and LIS data.</p>
+                
+                <div class="supported-formats">
+                    <span class="format-badge new">.xlsx</span>
+                    <span class="format-badge new">.xls</span>
+                </div>
+                
+                <div class="file-upload-area" id="excelUploadArea">
+                    <p><strong>Drop Excel files here or click to select</strong></p>
+                    <p>Supports packaging reports and LIS data files</p>
+                    <input type="file" id="excelFileInput" class="file-input" accept=".xlsx,.xls" multiple>
+                    <button class="upload-btn" onclick="document.getElementById('excelFileInput').click()">
+                        📊 Select Excel Files
+                    </button>
+                </div>
+                
+                <div class="loading" id="excelLoading">
+                    <div class="spinner"></div>
+                    <p>Parsing Excel file...</p>
+                </div>
+                
+                <div id="excelResults" class="results-area" style="display: none;">
+                    <h3>Excel Parsing Results</h3>
+                    <div id="excelStatus"></div>
+                    <div id="excelStats" class="stats-grid"></div>
+                    <div class="export-buttons">
+                        <button class="export-btn json" onclick="exportExcelData('json')">Export JSON</button>
+                        <button class="export-btn summary" onclick="exportExcelData('summary')">Export Summary</button>
+                    </div>
+                    <div id="excelData" class="json-display"></div>
+                </div>
+            </div>
+            
+            <!-- Enhanced File Handler Test -->
+            <div class="feature-section">
+                <h2>🔧 Enhanced File Handler Test</h2>
+                <p>Test the unified file handler that supports all file formats.</p>
+                
+                <div class="supported-formats">
+                    <span class="format-badge">.lotSumTXT</span>
+                    <span class="format-badge new">.stdf</span>
+                    <span class="format-badge new">.stdf.gz</span>
+                    <span class="format-badge new">.xlsx</span>
+                    <span class="format-badge new">.xls</span>
+                </div>
+                
+                <div class="file-upload-area" id="handlerUploadArea">
+                    <p><strong>Drop any supported file here or click to select</strong></p>
+                    <p>Unified interface for all supported file formats</p>
+                    <input type="file" id="handlerFileInput" class="file-input" accept=".stdf,.stdf.gz,.lotSumTXT,.xlsx,.xls" multiple>
+                    <button class="upload-btn" onclick="document.getElementById('handlerFileInput').click()">
+                        🔧 Select Any File
+                    </button>
+                </div>
+                
+                <div class="loading" id="handlerLoading">
+                    <div class="spinner"></div>
+                    <p>Processing file...</p>
+                </div>
+                
+                <div id="handlerResults" class="results-area" style="display: none;">
+                    <h3>File Handler Results</h3>
+                    <div id="handlerStatus"></div>
+                    <div id="handlerStats" class="stats-grid"></div>
+                    <div class="export-buttons">
+                        <button class="export-btn json" onclick="exportHandlerData('json')">Export JSON</button>
+                        <button class="export-btn summary" onclick="exportHandlerData('summary')">Export Summary</button>
+                    </div>
+                    <div id="handlerData" class="json-display"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    
+    <!-- Import our modules -->
+    <script type="module">
+        import { STDFFileHandler } from './js/STDFFileHandler.js';
+        import { STDFParser } from './js/modules/STDFParser.js';
+        import { ExcelParser } from './js/modules/ExcelParser.js';
+        
+        // Global variables
+        window.fileHandler = new STDFFileHandler();
+        window.stdfParser = new STDFParser();
+        window.excelParser = new ExcelParser();
+        
+        // STDF File Handling
+        document.getElementById('stdfFileInput').addEventListener('change', handleSTDFFiles);
+        setupDragAndDrop('stdfUploadArea', handleSTDFFiles);
+        
+        // Excel File Handling
+        document.getElementById('excelFileInput').addEventListener('change', handleExcelFiles);
+        setupDragAndDrop('excelUploadArea', handleExcelFiles);
+        
+        // Handler File Handling
+        document.getElementById('handlerFileInput').addEventListener('change', handleHandlerFiles);
+        setupDragAndDrop('handlerUploadArea', handleHandlerFiles);
+        
+        // Setup drag and drop
+        function setupDragAndDrop(areaId, handler) {
+            const area = document.getElementById(areaId);
+            
+            area.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                area.classList.add('dragover');
+            });
+            
+            area.addEventListener('dragleave', () => {
+                area.classList.remove('dragover');
+            });
+            
+            area.addEventListener('drop', (e) => {
+                e.preventDefault();
+                area.classList.remove('dragover');
+                const files = Array.from(e.dataTransfer.files);
+                handler({ target: { files } });
+            });
+        }
+        
+        // STDF File Handler
+        async function handleSTDFFiles(event) {
+            const files = Array.from(event.target.files);
+            if (files.length === 0) return;
+            
+            showLoading('stdfLoading');
+            hideResults('stdfResults');
+            
+            try {
+                const results = [];
+                for (const file of files) {
+                    console.log(`Processing STDF file: ${file.name}`);
+                    const result = await window.stdfParser.parseSTDFFile(file);
+                    results.push({ fileName: file.name, result });
+                }
+                
+                displaySTDFResults(results);
+                showResults('stdfResults');
+            } catch (error) {
+                console.error('STDF parsing error:', error);
+                showError('stdfStatus', `Error parsing STDF files: ${error.message}`);
+                showResults('stdfResults');
+            } finally {
+                hideLoading('stdfLoading');
+            }
+        }
+        
+        // Excel File Handler
+        async function handleExcelFiles(event) {
+            const files = Array.from(event.target.files);
+            if (files.length === 0) return;
+            
+            showLoading('excelLoading');
+            hideResults('excelResults');
+            
+            try {
+                const results = [];
+                for (const file of files) {
+                    console.log(`Processing Excel file: ${file.name}`);
+                    const result = await window.excelParser.parseExcelFile(file);
+                    results.push({ fileName: file.name, result });
+                }
+                
+                displayExcelResults(results);
+                showResults('excelResults');
+            } catch (error) {
+                console.error('Excel parsing error:', error);
+                showError('excelStatus', `Error parsing Excel files: ${error.message}`);
+                showResults('excelResults');
+            } finally {
+                hideLoading('excelLoading');
+            }
+        }
+        
+        // Handler File Handler
+        async function handleHandlerFiles(event) {
+            const files = Array.from(event.target.files);
+            if (files.length === 0) return;
+            
+            showLoading('handlerLoading');
+            hideResults('handlerResults');
+            
+            try {
+                const results = [];
+                for (const file of files) {
+                    console.log(`Processing file with handler: ${file.name}`);
+                    const result = await window.fileHandler.loadFile(file);
+                    results.push({ fileName: file.name, result });
+                }
+                
+                displayHandlerResults(results);
+                showResults('handlerResults');
+            } catch (error) {
+                console.error('Handler error:', error);
+                showError('handlerStatus', `Error processing files: ${error.message}`);
+                showResults('handlerResults');
+            } finally {
+                hideLoading('handlerLoading');
+            }
+        }
+        
+        // Display Functions
+        function displaySTDFResults(results) {
+            const statusDiv = document.getElementById('stdfStatus');
+            const statsDiv = document.getElementById('stdfStats');
+            const dataDiv = document.getElementById('stdfData');
+            
+            let totalRecords = 0;
+            let totalFiles = results.length;
+            
+            results.forEach(result => {
+                totalRecords += result.result.summary?.totalRecords || 0;
+            });
+            
+            showSuccess(statusDiv, `Successfully parsed ${totalFiles} STDF file(s)`);
+            
+            statsDiv.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${totalFiles}</div>
+                    <div class="stat-label">Files Processed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${totalRecords}</div>
+                    <div class="stat-label">Total Records</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${results[0]?.result.summary?.recordTypes ? Object.keys(results[0].result.summary.recordTypes).length : 0}</div>
+                    <div class="stat-label">Record Types</div>
+                </div>
+            `;
+            
+            dataDiv.textContent = JSON.stringify(results, null, 2);
+            window.stdfResults = results;
+        }
+        
+        function displayExcelResults(results) {
+            const statusDiv = document.getElementById('excelStatus');
+            const statsDiv = document.getElementById('excelStats');
+            const dataDiv = document.getElementById('excelData');
+            
+            let totalWorksheets = 0;
+            let totalFiles = results.length;
+            
+            results.forEach(result => {
+                totalWorksheets += result.result.summary?.totalWorksheets || 0;
+            });
+            
+            showSuccess(statusDiv, `Successfully parsed ${totalFiles} Excel file(s)`);
+            
+            statsDiv.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${totalFiles}</div>
+                    <div class="stat-label">Files Processed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${totalWorksheets}</div>
+                    <div class="stat-label">Total Worksheets</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${results[0]?.result.summary?.totalRows || 0}</div>
+                    <div class="stat-label">Total Rows</div>
+                </div>
+            `;
+            
+            dataDiv.textContent = JSON.stringify(results, null, 2);
+            window.excelResults = results;
+        }
+        
+        function displayHandlerResults(results) {
+            const statusDiv = document.getElementById('handlerStatus');
+            const statsDiv = document.getElementById('handlerStats');
+            const dataDiv = document.getElementById('handlerData');
+            
+            const successfulFiles = results.filter(r => r.result.success).length;
+            const totalFiles = results.length;
+            
+            showSuccess(statusDiv, `Successfully processed ${successfulFiles}/${totalFiles} file(s)`);
+            
+            const stats = window.fileHandler.getFileTypeStatistics();
+            
+            statsDiv.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${stats.total}</div>
+                    <div class="stat-label">Total Files</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.byStatus.success}</div>
+                    <div class="stat-label">Successful</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${Object.keys(stats.byType).length}</div>
+                    <div class="stat-label">File Types</div>
+                </div>
+            `;
+            
+            dataDiv.textContent = JSON.stringify(results, null, 2);
+            window.handlerResults = results;
+        }
+        
+        // Utility Functions
+        function showLoading(elementId) {
+            document.getElementById(elementId).style.display = 'block';
+        }
+        
+        function hideLoading(elementId) {
+            document.getElementById(elementId).style.display = 'none';
+        }
+        
+        function showResults(elementId) {
+            document.getElementById(elementId).style.display = 'block';
+        }
+        
+        function hideResults(elementId) {
+            document.getElementById(elementId).style.display = 'none';
+        }
+        
+        function showSuccess(element, message) {
+            element.innerHTML = `<div class="status success">✅ ${message}</div>`;
+        }
+        
+        function showError(element, message) {
+            element.innerHTML = `<div class="status error">❌ ${message}</div>`;
+        }
+        
+        // Export Functions
+        window.exportSTDFData = function(format) {
+            if (!window.stdfResults) return;
+            const data = format === 'summary' ? 
+                window.stdfResults.map(r => r.result.summary) : 
+                window.stdfResults;
+            downloadJSON(data, `stdf-data-${format}.json`);
+        };
+        
+        window.exportExcelData = function(format) {
+            if (!window.excelResults) return;
+            const data = format === 'summary' ? 
+                window.excelResults.map(r => r.result.summary) : 
+                window.excelResults;
+            downloadJSON(data, `excel-data-${format}.json`);
+        };
+        
+        window.exportHandlerData = function(format) {
+            if (!window.handlerResults) return;
+            const data = format === 'summary' ? 
+                window.fileHandler.exportAllData('summary') : 
+                window.handlerResults;
+            downloadJSON(data, `handler-data-${format}.json`);
+        };
+        
+        function downloadJSON(data, filename) {
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        console.log('Phase 1 test interface loaded successfully!');
+        console.log('Available parsers:', {
+            stdfParser: window.stdfParser,
+            excelParser: window.excelParser,
+            fileHandler: window.fileHandler
+        });
+    </script>
+</body>
+</html> 

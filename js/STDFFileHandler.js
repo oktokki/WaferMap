@@ -1,28 +1,36 @@
 /**
  * STDF File Handler - Refactored Version
  * Handles parsing of STDF files, summary files, and compressed files
- * Version: 2.0
+ * Version: 3.0
  * Created: 2025-01-27
- * Updated: 2025-01-27 - Refactored to use modular structure
+ * Updated: 2025-06-22 - Added STDFParser and ExcelParser integration
  */
 
 import { FileUtils } from './utils/FileUtils.js';
 import { CalculationUtils } from './utils/CalculationUtils.js';
 import { SummaryFileParser } from './modules/SummaryFileParser.js';
+import { STDFParser } from './modules/STDFParser.js';
+import { ExcelParser } from './modules/ExcelParser.js';
 import { Analytics } from './modules/Analytics.js';
 import { UI } from './modules/UI.js';
 
 export class STDFFileHandler {
     constructor() {
-        this.supportedFormats = ['.stdf', '.stdf.gz', '.lotSumTXT', '.lotsumtxt'];
+        this.supportedFormats = ['.stdf', '.stdf.gz', '.lotSumTXT', '.lotsumtxt', '.xlsx', '.xls'];
         this.parsers = {
             '.lotSumTXT': this.parseSummaryFile.bind(this),
             '.lotsumtxt': this.parseSummaryFile.bind(this),
             '.stdf': this.parseSTDFFile.bind(this),
-            '.stdf.gz': this.parseCompressedSTDF.bind(this)
+            '.stdf.gz': this.parseCompressedSTDF.bind(this),
+            '.xlsx': this.parseExcelFile.bind(this),
+            '.xls': this.parseExcelFile.bind(this)
         };
         this.processedFiles = new Map(); // Store multiple files
         this.testSequences = new Map(); // Store test sequences by lot
+        
+        // Initialize specialized parsers
+        this.stdfParser = new STDFParser();
+        this.excelParser = new ExcelParser();
     }
 
     /**
@@ -123,21 +131,45 @@ export class STDFFileHandler {
     }
 
     /**
+     * Parse STDF file using new STDFParser
+     * @param {File} file - STDF file to parse
+     * @returns {Promise<Object>} Parsed data
+     */
+    async parseSTDFFile(file) {
+        try {
+            console.log(`Parsing STDF file: ${file.name}`);
+            const result = await this.stdfParser.parseSTDFFile(file);
+            
+            // Add file metadata
+            result.fileName = file.name;
+            result.fileSize = file.size;
+            result.parseTime = new Date().toISOString();
+            
+            console.log(`STDF parsing completed for: ${file.name}`);
+            return result;
+        } catch (error) {
+            console.error(`Error in parseSTDFFile:`, error);
+            throw error;
+        }
+    }
+
+    /**
      * Parse compressed STDF file
      * @param {File} file - Compressed STDF file to parse
      * @returns {Promise<Object>} Parsed data
      */
     async parseCompressedSTDF(file) {
         try {
-            const compressedData = await file.arrayBuffer();
-            const decompressedData = pako.inflate(new Uint8Array(compressedData));
+            console.log(`Parsing compressed STDF file: ${file.name}`);
+            const result = await this.stdfParser.parseSTDFFile(file);
             
-            // Create a new file object with decompressed data
-            const decompressedFile = new File([decompressedData], file.name.replace('.gz', ''), {
-                type: 'application/octet-stream'
-            });
+            // Add file metadata
+            result.fileName = file.name;
+            result.fileSize = file.size;
+            result.parseTime = new Date().toISOString();
             
-            return await this.parseSTDFFile(decompressedFile);
+            console.log(`Compressed STDF parsing completed for: ${file.name}`);
+            return result;
         } catch (error) {
             console.error(`Error in parseCompressedSTDF:`, error);
             throw error;
@@ -145,19 +177,26 @@ export class STDFFileHandler {
     }
 
     /**
-     * Parse STDF file
-     * @param {File} file - STDF file to parse
+     * Parse Excel file using new ExcelParser
+     * @param {File} file - Excel file to parse
      * @returns {Promise<Object>} Parsed data
      */
-    async parseSTDFFile(file) {
-        // Placeholder for STDF parsing - would need STDFRecordParser implementation
-        console.log('STDF parsing not yet implemented');
-        return {
-            lotInfo: {},
-            testResults: [],
-            summary: {},
-            analytics: {}
-        };
+    async parseExcelFile(file) {
+        try {
+            console.log(`Parsing Excel file: ${file.name}`);
+            const result = await this.excelParser.parseExcelFile(file);
+            
+            // Add file metadata
+            result.fileName = file.name;
+            result.fileSize = file.size;
+            result.parseTime = new Date().toISOString();
+            
+            console.log(`Excel parsing completed for: ${file.name}`);
+            return result;
+        } catch (error) {
+            console.error(`Error in parseExcelFile:`, error);
+            throw error;
+        }
     }
 
     /**
@@ -203,6 +242,82 @@ export class STDFFileHandler {
         console.log('Extracted test type:', testType);
         
         return { lotNumber, testType };
+    }
+
+    /**
+     * Get file type statistics
+     * @returns {Object} File type statistics
+     */
+    getFileTypeStatistics() {
+        const files = this.getAllProcessedFiles();
+        const stats = {
+            total: files.length,
+            byType: {},
+            byStatus: { success: 0, failed: 0 }
+        };
+        
+        files.forEach(file => {
+            // Count by file type
+            if (!stats.byType[file.fileType]) {
+                stats.byType[file.fileType] = 0;
+            }
+            stats.byType[file.fileType]++;
+            
+            // Count by status
+            if (file.success) {
+                stats.byStatus.success++;
+            } else {
+                stats.byStatus.failed++;
+            }
+        });
+        
+        return stats;
+    }
+
+    /**
+     * Get STDF parser instance
+     * @returns {STDFParser} STDF parser instance
+     */
+    getSTDFParser() {
+        return this.stdfParser;
+    }
+
+    /**
+     * Get Excel parser instance
+     * @returns {ExcelParser} Excel parser instance
+     */
+    getExcelParser() {
+        return this.excelParser;
+    }
+
+    /**
+     * Export all processed data
+     * @param {string} format - Export format
+     * @returns {string} Exported data
+     */
+    exportAllData(format = 'json') {
+        const allData = {
+            fileHandler: {
+                supportedFormats: this.supportedFormats,
+                fileTypeStats: this.getFileTypeStatistics(),
+                processedFiles: this.getAllProcessedFiles()
+            },
+            stdfData: this.stdfParser ? this.stdfParser.parsedData : null,
+            excelData: this.excelParser ? this.excelParser.parsedData : null
+        };
+        
+        switch (format) {
+            case 'json':
+                return JSON.stringify(allData, null, 2);
+            case 'summary':
+                return JSON.stringify({
+                    fileTypeStats: this.getFileTypeStatistics(),
+                    stdfSummary: this.stdfParser ? this.stdfParser.getSummary() : null,
+                    excelSummary: this.excelParser ? this.excelParser.parsedData.summary : null
+                }, null, 2);
+            default:
+                throw new Error(`Unsupported export format: ${format}`);
+        }
     }
 }
 

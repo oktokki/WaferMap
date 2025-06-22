@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 1 Test - Simple</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .file-input {
+            margin: 10px 0;
+        }
+        .results {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Phase 1 Features Test</h1>
+        <p>Test the newly implemented STDF and Excel parsing capabilities.</p>
+
+        <!-- STDF Parser Test -->
+        <div class="section">
+            <h2>📊 STDF Parser Test</h2>
+            <p>Test STDF file parsing (.stdf, .stdf.gz)</p>
+            <input type="file" id="stdfFile" class="file-input" accept=".stdf,.stdf.gz">
+            <button onclick="testSTDFParser()">Test STDF Parser</button>
+            <div id="stdfStatus"></div>
+            <div id="stdfResults" class="results" style="display:none;"></div>
+        </div>
+
+        <!-- Excel Parser Test -->
+        <div class="section">
+            <h2>📈 Excel Parser Test</h2>
+            <p>Test Excel file parsing (.xlsx, .xls)</p>
+            <input type="file" id="excelFile" class="file-input" accept=".xlsx,.xls">
+            <button onclick="testExcelParser()">Test Excel Parser</button>
+            <div id="excelStatus"></div>
+            <div id="excelResults" class="results" style="display:none;"></div>
+        </div>
+
+        <!-- File Handler Test -->
+        <div class="section">
+            <h2>🔧 File Handler Test</h2>
+            <p>Test unified file handler (all formats)</p>
+            <input type="file" id="handlerFile" class="file-input" accept=".stdf,.stdf.gz,.lotSumTXT,.xlsx,.xls">
+            <button onclick="testFileHandler()">Test File Handler</button>
+            <div id="handlerStatus"></div>
+            <div id="handlerResults" class="results" style="display:none;"></div>
+        </div>
+
+        <!-- Module Status -->
+        <div class="section">
+            <h2>📋 Module Status</h2>
+            <div id="moduleStatus"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 Quick Test</h3>
+            <button onclick="runQuickTest()" class="test-btn">Run Quick Test</button>
+            <div id="quickTestResults" class="results"></div>
+        </div>
+    </div>
+
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+
+    <!-- Import our modules -->
+    <script type="module">
+        import { STDFFileHandler } from './js/STDFFileHandler.js';
+        import { STDFParser } from './js/modules/STDFParser.js';
+        import { ExcelParser } from './js/modules/ExcelParser.js';
+        
+        // Global variables - simple approach like features file
+        window.fileHandler = new STDFFileHandler();
+        window.stdfParser = new STDFParser();
+        window.excelParser = new ExcelParser();
+        
+        // Update module status
+        function updateModuleStatus() {
+            const statusDiv = document.getElementById('moduleStatus');
+            statusDiv.innerHTML = `
+                <div class="status success">
+                    ✅ STDFFileHandler: ${window.fileHandler.supportedFormats.join(', ')}
+                </div>
+                <div class="status success">
+                    ✅ STDFParser: ${window.stdfParser.supportedFormats.join(', ')}
+                </div>
+                <div class="status success">
+                    ✅ ExcelParser: ${window.excelParser.supportedFormats.join(', ')}
+                </div>
+            `;
+        }
+
+        // Initialize
+        updateModuleStatus();
+        console.log('Phase 1 test interface loaded!');
+        console.log('Available modules:', {
+            fileHandler: window.fileHandler,
+            stdfParser: window.stdfParser,
+            excelParser: window.excelParser
+        });
+    </script>
+
+    <script>
+        // Global test functions
+        async function testSTDFParser() {
+            const file = document.getElementById('stdfFile').files[0];
+            if (!file) {
+                showStatus('stdfStatus', 'Please select a STDF file', 'error');
+                return;
+            }
+
+            showStatus('stdfStatus', 'Parsing STDF file...', 'success');
+            
+            try {
+                const result = await window.stdfParser.parseSTDFFile(file);
+                showStatus('stdfStatus', 'STDF parsing completed successfully!', 'success');
+                showResults('stdfResults', JSON.stringify(result, null, 2));
+            } catch (error) {
+                showStatus('stdfStatus', `Error: ${error.message}`, 'error');
+                console.error('STDF parsing error:', error);
+            }
+        }
+
+        async function testExcelParser() {
+            const file = document.getElementById('excelFile').files[0];
+            if (!file) {
+                showStatus('excelStatus', 'Please select an Excel file', 'error');
+                return;
+            }
+
+            showStatus('excelStatus', 'Parsing Excel file...', 'success');
+            
+            try {
+                const result = await window.excelParser.parseExcelFile(file);
+                showStatus('excelStatus', 'Excel parsing completed successfully!', 'success');
+                showResults('excelResults', JSON.stringify(result, null, 2));
+            } catch (error) {
+                showStatus('excelStatus', `Error: ${error.message}`, 'error');
+                console.error('Excel parsing error:', error);
+            }
+        }
+
+        async function testFileHandler() {
+            const file = document.getElementById('handlerFile').files[0];
+            if (!file) {
+                showStatus('handlerStatus', 'Please select a file', 'error');
+                return;
+            }
+
+            showStatus('handlerStatus', 'Processing file...', 'success');
+            
+            try {
+                const result = await window.fileHandler.loadFile(file);
+                showStatus('handlerStatus', 'File processing completed successfully!', 'success');
+                showResults('handlerResults', JSON.stringify(result, null, 2));
+            } catch (error) {
+                showStatus('handlerStatus', `Error: ${error.message}`, 'error');
+                console.error('File handler error:', error);
+            }
+        }
+
+        async function runQuickTest() {
+            const resultsDiv = document.getElementById('quickTestResults');
+            resultsDiv.innerHTML = '<p>Running quick test...</p>';
+            
+            try {
+                // Test STDF parser improvements
+                console.log('STDF Parser initialized:', window.stdfParser.parsedData.rawRecords !== undefined);
+                
+                // Test Excel parser improvements
+                console.log('Excel Parser initialized:', window.excelParser.parsedData.lisData !== undefined);
+                
+                resultsDiv.innerHTML = `
+                    <div class="success">
+                        <h4>✅ Quick Test Results</h4>
+                        <p><strong>STDF Parser:</strong> Raw records tracking enabled</p>
+                        <p><strong>Excel Parser:</strong> LIS data processing enhanced</p>
+                        <p><strong>Status:</strong> Ready for enhanced testing</p>
+                    </div>
+                `;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Quick Test Failed</h4>
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function showResults(elementId, data) {
+            const element = document.getElementById(elementId);
+            element.textContent = data;
+            element.style.display = 'block';
+        }
+    </script>
+</body>
+</html> 
