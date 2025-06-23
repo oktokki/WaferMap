@@ -10,7 +10,8 @@
     "chat-manager": "node scripts/chat-manager.js",
     "chat-session": "node scripts/chat-manager.js",
     "session-info": "node -e \"const manager = require('./scripts/utils/chatSessionManager'); const m = new manager(); console.log(m.getSessionInfo());\"",
-    "session-list": "node -e \"const manager = require('./scripts/utils/chatSessionManager'); const m = new manager(); console.log('Previous sessions:', m.listPreviousSessions());\""
+    "session-list": "node -e \"const manager = require('./scripts/utils/chatSessionManager'); const m = new manager(); console.log('Previous sessions:', m.listPreviousSessions());\"",
+    "quick-setup": "node scripts/quick-setup.js"
   },
   "repository": {
     "type": "git",
