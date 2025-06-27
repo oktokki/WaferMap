@@ -6,7 +6,7 @@
     <title>Packaging Analytics - Semiconductor Value Chain ERP</title>
     
     <!-- Favicon -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔬</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
     
     <!-- External Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -14,6 +14,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.1.0/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
     <!-- Fonts and Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -21,6 +24,64 @@
     
     <!-- Custom Styles -->
     <link rel="stylesheet" href="css/dashboard.css">
+    <style>
+        /* Ensure CSS works - Critical styles inline */
+        body { 
+            font-family: 'Noto Sans KR', sans-serif; 
+            background-color: #f1f5f9; 
+        }
+        
+        .main-tab.active { 
+            border-color: #ea580c !important; 
+            color: #ea580c !important; 
+            background-color: #fff7ed !important; 
+        }
+        
+        .main-tab { 
+            border-color: transparent; 
+            transition: all 0.2s ease;
+        }
+        
+        .tab-content { 
+            display: none; 
+        }
+        
+        .tab-content:not(.hidden) { 
+            display: block; 
+        }
+        
+        .loader { 
+            border: 4px solid #f3f3f3; 
+            border-top: 4px solid #ea580c; 
+            border-radius: 50%; 
+            width: 40px; 
+            height: 40px; 
+            animation: spin 1s linear infinite; 
+        }
+        
+        @keyframes spin { 
+            0% { transform: rotate(0deg); } 
+            100% { transform: rotate(360deg); } 
+        }
+        
+        /* File upload area hover effects */
+        .upload-area:hover {
+            border-color: #ea580c;
+            background-color: #fff7ed;
+        }
+        
+        /* Progress bar animations */
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        
+        /* Chart container */
+        .chart-container { 
+            position: relative; 
+            width: 100%; 
+            height: 250px; 
+        }
+    </style>
 </head>
 <body class="text-slate-800">
     <div id="dashboard-page" class="min-h-screen">
@@ -32,7 +93,7 @@
                 </button>
                 <div>
                     <h1 class="text-2xl font-bold text-gray-800">📦 Packaging Analytics</h1>
-                    <p class="text-sm text-gray-600">Packaging run lot data analysis and management</p>
+                    <p class="text-sm text-gray-600">Packaging run lot data analysis and wafer-to-IC mapping management</p>
                 </div>
             </div>
             <div class="flex items-center space-x-4">
@@ -46,11 +107,11 @@
         <!-- Navigation -->
         <nav id="main-tabs" class="flex border-b bg-slate-50">
             <button data-tab="summary" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300 active">Summary</button>
-            <button data-tab="map-analysis" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">MAP분석</button>
-            <button data-tab="test-analysis" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">Test Analysis</button>
-            <button data-tab="binning-analysis" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">Binning Analysis</button>
-            <button data-tab="risk-assessment" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">RISK평가</button>
-            <button data-tab="final-test" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">Final Test</button>
+            <button data-tab="file-upload" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">File Upload</button>
+            <button data-tab="run-lot-analysis" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">Run Lot Analysis</button>
+            <button data-tab="yield-analysis" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">Yield Analysis</button>
+            <button data-tab="wafer-mapping" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">Wafer Mapping</button>
+            <button data-tab="quality-analysis" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">Quality Analysis</button>
         </nav>
 
         <!-- Main Content -->
@@ -59,7 +120,7 @@
             <div id="summary-tab" class="tab-content">
                 <div class="mb-6">
                     <h1 class="text-2xl font-bold text-gray-800 mb-2">📦 Packaging Analytics</h1>
-                    <p class="text-sm text-gray-600">Packaging run lot data analysis and management</p>
+                    <p class="text-sm text-gray-600">Packaging run lot data analysis and wafer-to-IC mapping management</p>
                 </div>
 
                 <!-- Quick Stats Overview -->
@@ -98,8 +159,208 @@
                                 </svg>
                             </div>
                             <div class="ml-3">
-                                <p class="text-sm font-medium text-gray-500">Total Lots</p>
+                                <p class="text-sm font-medium text-gray-500">Run Lots</p>
                                 <p id="summary-total-lots" class="text-2xl font-bold text-gray-900">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-orange-100 rounded-lg">
+                                <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Mapped ICs</p>
+                                <p id="summary-mapped-ics" class="text-2xl font-bold text-gray-900">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Welcome Message -->
+                <div class="bg-gradient-to-r from-orange-50 to-amber-50 p-6 rounded-lg border border-orange-200">
+                    <h2 class="text-xl font-semibold text-orange-800 mb-3">📦 Packaging Analytics Dashboard</h2>
+                    <p class="text-orange-700 mb-4">
+                        This dashboard provides comprehensive analysis tools for packaging run lot data and wafer-to-IC mapping. 
+                        Upload your Excel packaging reports to get started with detailed analytics.
+                    </p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div class="bg-white p-3 rounded border">
+                            <h3 class="font-semibold text-gray-800 mb-1">📁 Excel Files</h3>
+                            <p class="text-gray-600">Upload .xlsx/.xls packaging reports</p>
+                        </div>
+                        <div class="bg-white p-3 rounded border">
+                            <h3 class="font-semibold text-gray-800 mb-1">📊 Analysis</h3>
+                            <p class="text-gray-600">Run lot yield and wafer mapping analysis</p>
+                        </div>
+                        <div class="bg-white p-3 rounded border">
+                            <h3 class="font-semibold text-gray-800 mb-1">📈 Reports</h3>
+                            <p class="text-gray-600">Export comprehensive packaging reports</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Analysis Results -->
+                <div class="mt-6 bg-white rounded-lg shadow border">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">📋 Recent Analysis Results</h3>
+                    </div>
+                    <div class="p-6">
+                        <div id="recent-results" class="text-center text-gray-500">
+                            <p>Upload Excel packaging files to see analysis results</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Upload Tab -->
+            <div id="file-upload-tab" class="tab-content hidden">
+                <div class="mb-6">
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">📁 Excel File Upload</h1>
+                    <p class="text-gray-600">Upload packaging Excel files for comprehensive analysis</p>
+                </div>
+
+                <!-- File Upload Area -->
+                <div class="bg-white p-8 rounded-lg shadow border border-dashed border-gray-300">
+                    <div class="text-center">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        <div class="mt-4">
+                            <label for="excel-file-upload" class="cursor-pointer">
+                                <span class="mt-2 block text-sm font-medium text-gray-900">Upload Excel Files</span>
+                                <span class="mt-1 block text-sm text-gray-500">Drag and drop or click to select .xlsx or .xls files</span>
+                            </label>
+                            <input id="excel-file-upload" type="file" multiple accept=".xlsx,.xls" class="sr-only" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upload Progress -->
+                <div id="upload-progress" class="mt-6 hidden">
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📤 Upload Progress</h3>
+                        <div id="progress-container" class="space-y-4">
+                            <!-- Progress items will be added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File List -->
+                <div id="file-list" class="mt-6 hidden">
+                    <div class="bg-white rounded-lg shadow border">
+                        <div class="p-6 border-b">
+                            <h3 class="text-lg font-semibold text-gray-800">📋 Uploaded Files</h3>
+                        </div>
+                        <div class="p-6">
+                            <div id="uploaded-files" class="space-y-4">
+                                <!-- File items will be added here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analysis Controls -->
+                <div id="analysis-controls" class="mt-6 hidden">
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">🔧 Analysis Controls</h3>
+                        <div class="flex flex-wrap gap-4">
+                            <button id="analyze-all-files" class="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-md transition-colors">
+                                <i class="fas fa-play mr-2"></i>Analyze All Files
+                            </button>
+                            <button id="clear-all-files" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-md transition-colors">
+                                <i class="fas fa-trash mr-2"></i>Clear All Files
+                            </button>
+                            <button id="export-analysis" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md transition-colors">
+                                <i class="fas fa-download mr-2"></i>Export Analysis
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Run Lot Analysis Tab -->
+            <div id="run-lot-analysis-tab" class="tab-content hidden">
+                <div class="mb-6">
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">📦 Run Lot Analysis Dashboard</h1>
+                    <p class="text-gray-600">Advanced run lot analysis and yield optimization insights</p>
+                </div>
+
+                <!-- Run Lot Analysis Controls -->
+                <div class="mb-6 p-4 bg-blue-50 rounded-lg">
+                    <div class="flex flex-wrap gap-4 items-center">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Run Lot Category</label>
+                            <select id="run-lot-category-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="all">All Runs</option>
+                                <option value="pass">Pass Runs</option>
+                                <option value="fail">Fail Runs</option>
+                                <option value="marginal">Marginal Runs</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Analysis Period</label>
+                            <select id="run-lot-period-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="7d">Last 7 Days</option>
+                                <option value="30d">Last 30 Days</option>
+                                <option value="90d">Last 90 Days</option>
+                                <option value="all">All Time</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+                            <select id="run-lot-sort-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="count">Count</option>
+                                <option value="percentage">Percentage</option>
+                                <option value="trend">Trend</option>
+                            </select>
+                        </div>
+                        <button id="refresh-run-lot-analysis" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
+                            🔄 Refresh Analysis
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Run Lot Overview Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-green-100 rounded-lg">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Total Runs</p>
+                                <p id="total-runs" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-blue-100 rounded-lg">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Pass Rate</p>
+                                <p id="pass-rate" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-red-100 rounded-lg">
+                                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Fail Rate</p>
+                                <p id="fail-rate" class="text-2xl font-bold text-gray-900">--</p>
                             </div>
                         </div>
                     </div>
@@ -107,49 +368,253 @@
                         <div class="flex items-center">
                             <div class="p-2 bg-yellow-100 rounded-lg">
                                 <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
                                 </svg>
                             </div>
                             <div class="ml-3">
-                                <p class="text-sm font-medium text-gray-500">Last Updated</p>
-                                <p id="summary-last-updated" class="text-2xl font-bold text-gray-900">--</p>
+                                <p class="text-sm font-medium text-gray-500">Marginal Rate</p>
+                                <p id="marginal-rate" class="text-2xl font-bold text-gray-900">--</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Welcome Message -->
-                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200">
-                    <h2 class="text-xl font-semibold text-blue-800 mb-3">🚀 Welcome to Wafer Map Dashboard v4.1</h2>
-                    <p class="text-blue-700 mb-4">
-                        This dashboard provides comprehensive analysis tools for semiconductor wafer testing data. 
-                        Upload your STDF summary files to get started with detailed analytics.
-                    </p>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        <div class="bg-white p-3 rounded border">
-                            <h3 class="font-semibold text-gray-800 mb-1">📁 File Upload</h3>
-                            <p class="text-gray-600">Upload .lotSumTXT files in the Final Test tab</p>
+                <!-- Run Lot Analysis Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Run Lot Distribution Chart -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📊 Run Lot Distribution</h3>
+                        <div class="h-64">
+                            <canvas id="run-lot-distribution-chart"></canvas>
                         </div>
-                        <div class="bg-white p-3 rounded border">
-                            <h3 class="font-semibold text-gray-800 mb-1">📊 Analysis</h3>
-                            <p class="text-gray-600">View detailed test and binning analysis</p>
+                    </div>
+
+                    <!-- Run Lot Trend Analysis -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📈 Run Lot Trend Analysis</h3>
+                        <div class="h-64">
+                            <canvas id="run-lot-trend-chart"></canvas>
                         </div>
-                        <div class="bg-white p-3 rounded border">
-                            <h3 class="font-semibold text-gray-800 mb-1">📈 Reports</h3>
-                            <p class="text-gray-600">Export comprehensive reports and charts</p>
+                    </div>
+                </div>
+
+                <!-- Run Lot Details Table -->
+                <div class="bg-white rounded-lg shadow border">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">📋 Run Lot Details</h3>
+                    </div>
+                    <div class="">
+                        <table id="run-lot-details-table" class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Run Code</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Count</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Percentage</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trend</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="run-lot-details-tbody" class="bg-white divide-y divide-gray-200">
+                                <!-- Run lot rows will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Run Lot Optimization Insights -->
+                <div class="mt-6 bg-white rounded-lg shadow border">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">💡 Run Lot Optimization Insights</h3>
+                    </div>
+                    <div id="run-lot-insights" class="p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Yield Improvement Opportunities -->
+                            <div class="bg-blue-50 p-4 rounded-lg">
+                                <h4 class="font-semibold text-blue-800 mb-2">🎯 Yield Improvement Opportunities</h4>
+                                <div id="yield-opportunities" class="space-y-2">
+                                    <!-- Opportunities will be populated here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Run Consolidation Suggestions -->
+                            <div class="bg-green-50 p-4 rounded-lg">
+                                <h4 class="font-semibold text-green-800 mb-2">🔧 Run Consolidation Suggestions</h4>
+                                <div id="consolidation-suggestions" class="space-y-2">
+                                    <!-- Suggestions will be populated here -->
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- MAP Analysis Tab -->
-            <div id="map-analysis-tab" class="tab-content hidden">
+            <!-- Yield Analysis Tab -->
+            <div id="yield-analysis-tab" class="tab-content hidden">
                 <div class="mb-6">
-                    <h1 class="text-2xl font-bold text-gray-800 mb-2">🗺️ Wafer Map Analysis</h1>
-                    <p class="text-gray-600">Visual wafer map analysis and defect pattern recognition</p>
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">📦 Yield Analysis Dashboard</h1>
+                    <p class="text-gray-600">Advanced yield analysis and optimization insights</p>
                 </div>
 
-                <!-- Map Analysis Controls -->
+                <!-- Yield Analysis Controls -->
+                <div class="mb-6 p-4 bg-green-50 rounded-lg">
+                    <div class="flex flex-wrap gap-4 items-center">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Yield Category</label>
+                            <select id="yield-category-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="all">All Yields</option>
+                                <option value="pass">Pass Yields</option>
+                                <option value="fail">Fail Yields</option>
+                                <option value="marginal">Marginal Yields</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Analysis Period</label>
+                            <select id="yield-period-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="7d">Last 7 Days</option>
+                                <option value="30d">Last 30 Days</option>
+                                <option value="90d">Last 90 Days</option>
+                                <option value="all">All Time</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+                            <select id="yield-sort-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="count">Count</option>
+                                <option value="percentage">Percentage</option>
+                                <option value="trend">Trend</option>
+                            </select>
+                        </div>
+                        <button id="refresh-yield-analysis" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm">
+                            🔄 Refresh Analysis
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Yield Overview Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-green-100 rounded-lg">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Total Yields</p>
+                                <p id="total-yields" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-blue-100 rounded-lg">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Average Yield</p>
+                                <p id="average-yield" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-red-100 rounded-lg">
+                                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Low Yields</p>
+                                <p id="low-yields" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-yellow-100 rounded-lg">
+                                <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">High Yields</p>
+                                <p id="high-yields" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Yield Analysis Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Yield Trend -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📈 Yield Trend</h3>
+                        <div class="h-64">
+                            <canvas id="yield-trend-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Yield Distribution -->
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">🎯 Yield Distribution</h3>
+                        <div class="h-64">
+                            <canvas id="yield-distribution-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Yield Details Table -->
+                <div class="bg-white rounded-lg shadow border">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">📋 Yield Details</h3>
+                    </div>
+                    <div class="">
+                        <table id="yield-details-table" class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lot Number</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Device</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Test Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Operator</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Yield (%)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Good</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fail</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="yield-details-tbody" class="bg-white divide-y divide-gray-200">
+                                <!-- Yield rows will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Yield Optimization Recommendations -->
+                <div class="mt-6 bg-white rounded-lg shadow border">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">💡 Yield Optimization Recommendations</h3>
+                    </div>
+                    <div id="yield-recommendations" class="p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Recommendations will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wafer Mapping Tab -->
+            <div id="wafer-mapping-tab" class="tab-content hidden">
+                <div class="mb-6">
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">🗺️ Wafer Mapping Dashboard</h1>
+                    <p class="text-gray-600">Visual wafer mapping and defect pattern recognition</p>
+                </div>
+
+                <!-- Wafer Mapping Controls -->
                 <div class="mb-6 p-4 bg-indigo-50 rounded-lg">
                     <div class="flex flex-wrap gap-4 items-center">
                         <div>
@@ -179,7 +644,7 @@
                                 <option value="grayscale">Grayscale</option>
                             </select>
                         </div>
-                        <button id="refresh-map-analysis" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">
+                        <button id="refresh-wafer-mapping" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">
                             🔄 Refresh Map
                         </button>
                     </div>
@@ -239,352 +704,66 @@
                     <!-- Defect Distribution -->
                     <div class="bg-white p-6 rounded-lg shadow border">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4">🎯 Defect Distribution</h3>
-                        <div id="defect-distribution-chart" class="h-64 flex items-center justify-center text-gray-500">
-                            <p>Chart will be displayed here</p>
+                        <div class="chart-container">
+                            <canvas id="defect-distribution-chart"></canvas>
                         </div>
                     </div>
 
                     <!-- Spatial Analysis -->
                     <div class="bg-white p-6 rounded-lg shadow border">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📍 Spatial Analysis</h3>
-                        <div id="spatial-analysis-chart" class="h-64 flex items-center justify-center text-gray-500">
-                            <p>Chart will be displayed here</p>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">🗺️ Spatial Analysis</h3>
+                        <div class="chart-container">
+                            <canvas id="spatial-analysis-chart"></canvas>
                         </div>
                     </div>
                 </div>
 
-                <!-- Pattern Recognition Results -->
+                <!-- Defect Details Table -->
                 <div class="bg-white rounded-lg shadow border">
                     <div class="p-6 border-b">
-                        <h3 class="text-lg font-semibold text-gray-800">🔍 Pattern Recognition Results</h3>
-                    </div>
-                    <div class="p-6">
-                        <div id="pattern-results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <!-- Pattern results will be populated here -->
-                            <div class="text-center text-gray-500">
-                                <p>Upload files to analyze defect patterns</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Test Analysis Tab -->
-            <div id="test-analysis-tab" class="tab-content hidden">
-                <div class="mb-6">
-                    <h1 class="text-2xl font-bold text-gray-800 mb-2">🔬 Test Analysis Dashboard</h1>
-                    <p class="text-gray-600">Comprehensive test performance analysis and optimization insights</p>
-                </div>
-
-                <!-- Test Analysis Controls -->
-                <div class="mb-6 p-4 bg-blue-50 rounded-lg">
-                    <div class="flex flex-wrap gap-4 items-center">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Test Type Filter</label>
-                            <select id="test-type-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
-                                <option value="all">All Tests</option>
-                                <option value="dc">DC Tests</option>
-                                <option value="ac">AC Tests</option>
-                                <option value="functional">Functional Tests</option>
-                                <option value="parametric">Parametric Tests</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Time Range</label>
-                            <select id="time-range-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
-                                <option value="7d">Last 7 Days</option>
-                                <option value="30d">Last 30 Days</option>
-                                <option value="90d">Last 90 Days</option>
-                                <option value="all">All Time</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Device Filter</label>
-                            <select id="device-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
-                                <option value="all">All Devices</option>
-                            </select>
-                        </div>
-                        <button id="refresh-test-analysis" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
-                            🔄 Refresh Analysis
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Test Performance Overview -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                    <div class="bg-white p-4 rounded-lg shadow border">
-                        <div class="flex items-center">
-                            <div class="p-2 bg-green-100 rounded-lg">
-                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm font-medium text-gray-500">Overall Yield</p>
-                                <p id="overall-yield" class="text-2xl font-bold text-gray-900">--</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-white p-4 rounded-lg shadow border">
-                        <div class="flex items-center">
-                            <div class="p-2 bg-blue-100 rounded-lg">
-                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                                </svg>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm font-medium text-gray-500">Test Time</p>
-                                <p id="avg-test-time" class="text-2xl font-bold text-gray-900">--</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-white p-4 rounded-lg shadow border">
-                        <div class="flex items-center">
-                            <div class="p-2 bg-yellow-100 rounded-lg">
-                                <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                                </svg>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm font-medium text-gray-500">Failure Rate</p>
-                                <p id="failure-rate" class="text-2xl font-bold text-gray-900">--</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-white p-4 rounded-lg shadow border">
-                        <div class="flex items-center">
-                            <div class="p-2 bg-purple-100 rounded-lg">
-                                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                                </svg>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm font-medium text-gray-500">Test Count</p>
-                                <p id="total-tests" class="text-2xl font-bold text-gray-900">--</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Test Analysis Charts -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    <!-- Test Yield Trend -->
-                    <div class="bg-white p-6 rounded-lg shadow border">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📈 Test Yield Trend</h3>
-                        <div id="test-yield-chart" class="h-64 flex items-center justify-center text-gray-500">
-                            <p>Chart will be displayed here</p>
-                        </div>
-                    </div>
-
-                    <!-- Test Failure Distribution -->
-                    <div class="bg-white p-6 rounded-lg shadow border">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">🎯 Test Failure Distribution</h3>
-                        <div id="test-failure-chart" class="h-64 flex items-center justify-center text-gray-500">
-                            <p>Chart will be displayed here</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Test Performance Table -->
-                <div class="bg-white rounded-lg shadow border">
-                    <div class="p-6 border-b">
-                        <h3 class="text-lg font-semibold text-gray-800">📊 Test Performance Details</h3>
+                        <h3 class="text-lg font-semibold text-gray-800">📋 Defect Details</h3>
                     </div>
                     <div class="">
-                        <table id="test-performance-table" class="w-full">
+                        <table id="defect-details-table" class="w-full">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Test Name</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Yield (%)</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fail Count</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Time (ms)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Run Lot</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wafer ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defect Type</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Severity</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Count</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="test-performance-tbody" class="bg-white divide-y divide-gray-200">
-                                <!-- Test rows will be populated here -->
+                            <tbody id="defect-details-tbody" class="bg-white divide-y divide-gray-200">
+                                <!-- Defect rows will be populated here -->
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- Test Optimization Recommendations -->
+                <!-- Defect Analysis Insights -->
                 <div class="mt-6 bg-white rounded-lg shadow border">
                     <div class="p-6 border-b">
-                        <h3 class="text-lg font-semibold text-gray-800">💡 Test Optimization Recommendations</h3>
+                        <h3 class="text-lg font-semibold text-gray-800">💡 Defect Analysis Insights</h3>
                     </div>
-                    <div id="test-recommendations" class="p-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <!-- Recommendations will be populated here -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Binning Analysis Tab -->
-            <div id="binning-analysis-tab" class="tab-content hidden">
-                <div class="mb-6">
-                    <h1 class="text-2xl font-bold text-gray-800 mb-2">📦 Binning Analysis Dashboard</h1>
-                    <p class="text-gray-600">Advanced binning analysis and yield optimization insights</p>
-                </div>
-
-                <!-- Binning Analysis Controls -->
-                <div class="mb-6 p-4 bg-green-50 rounded-lg">
-                    <div class="flex flex-wrap gap-4 items-center">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Bin Category</label>
-                            <select id="bin-category-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
-                                <option value="all">All Bins</option>
-                                <option value="pass">Pass Bins</option>
-                                <option value="fail">Fail Bins</option>
-                                <option value="marginal">Marginal Bins</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Analysis Period</label>
-                            <select id="bin-period-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
-                                <option value="7d">Last 7 Days</option>
-                                <option value="30d">Last 30 Days</option>
-                                <option value="90d">Last 90 Days</option>
-                                <option value="all">All Time</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
-                            <select id="bin-sort-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
-                                <option value="count">Count</option>
-                                <option value="percentage">Percentage</option>
-                                <option value="trend">Trend</option>
-                            </select>
-                        </div>
-                        <button id="refresh-binning-analysis" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm">
-                            🔄 Refresh Analysis
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Binning Overview Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                    <div class="bg-white p-4 rounded-lg shadow border">
-                        <div class="flex items-center">
-                            <div class="p-2 bg-green-100 rounded-lg">
-                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm font-medium text-gray-500">Total Bins</p>
-                                <p id="total-bins" class="text-2xl font-bold text-gray-900">--</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-white p-4 rounded-lg shadow border">
-                        <div class="flex items-center">
-                            <div class="p-2 bg-blue-100 rounded-lg">
-                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm font-medium text-gray-500">Pass Rate</p>
-                                <p id="pass-rate" class="text-2xl font-bold text-gray-900">--</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-white p-4 rounded-lg shadow border">
-                        <div class="flex items-center">
-                            <div class="p-2 bg-red-100 rounded-lg">
-                                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm font-medium text-gray-500">Fail Rate</p>
-                                <p id="fail-rate" class="text-2xl font-bold text-gray-900">--</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-white p-4 rounded-lg shadow border">
-                        <div class="flex items-center">
-                            <div class="p-2 bg-yellow-100 rounded-lg">
-                                <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                                </svg>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm font-medium text-gray-500">Marginal Rate</p>
-                                <p id="marginal-rate" class="text-2xl font-bold text-gray-900">--</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Binning Analysis Charts -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    <!-- Bin Distribution Chart -->
-                    <div class="bg-white p-6 rounded-lg shadow border">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📊 Bin Distribution</h3>
-                        <div id="bin-distribution-chart" class="h-64 flex items-center justify-center text-gray-500">
-                            <p>Chart will be displayed here</p>
-                        </div>
-                    </div>
-
-                    <!-- Bin Trend Analysis -->
-                    <div class="bg-white p-6 rounded-lg shadow border">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📈 Bin Trend Analysis</h3>
-                        <div id="bin-trend-chart" class="h-64 flex items-center justify-center text-gray-500">
-                            <p>Chart will be displayed here</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Binning Details Table -->
-                <div class="bg-white rounded-lg shadow border">
-                    <div class="p-6 border-b">
-                        <h3 class="text-lg font-semibold text-gray-800">📋 Binning Details</h3>
-                    </div>
-                    <div class="">
-                        <table id="binning-details-table" class="w-full">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bin Code</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Count</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Percentage</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trend</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="binning-details-tbody" class="bg-white divide-y divide-gray-200">
-                                <!-- Bin rows will be populated here -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Binning Optimization Insights -->
-                <div class="mt-6 bg-white rounded-lg shadow border">
-                    <div class="p-6 border-b">
-                        <h3 class="text-lg font-semibold text-gray-800">💡 Binning Optimization Insights</h3>
-                    </div>
-                    <div id="binning-insights" class="p-6">
+                    <div id="defect-insights" class="p-6">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Yield Improvement Opportunities -->
-                            <div class="bg-blue-50 p-4 rounded-lg">
-                                <h4 class="font-semibold text-blue-800 mb-2">🎯 Yield Improvement Opportunities</h4>
-                                <div id="yield-opportunities" class="space-y-2">
-                                    <!-- Opportunities will be populated here -->
+                            <!-- Critical Defects -->
+                            <div class="bg-red-50 p-4 rounded-lg">
+                                <h4 class="font-semibold text-red-800 mb-2">🚨 Critical Defects</h4>
+                                <div id="critical-defects" class="space-y-2">
+                                    <!-- Critical defects will be populated here -->
                                 </div>
                             </div>
                             
-                            <!-- Bin Consolidation Suggestions -->
-                            <div class="bg-green-50 p-4 rounded-lg">
-                                <h4 class="font-semibold text-green-800 mb-2">🔧 Bin Consolidation Suggestions</h4>
-                                <div id="consolidation-suggestions" class="space-y-2">
-                                    <!-- Suggestions will be populated here -->
+                            <!-- Improvement Opportunities -->
+                            <div class="bg-blue-50 p-4 rounded-lg">
+                                <h4 class="font-semibold text-blue-800 mb-2">🎯 Improvement Opportunities</h4>
+                                <div id="improvement-opportunities" class="space-y-2">
+                                    <!-- Opportunities will be populated here -->
                                 </div>
                             </div>
                         </div>
@@ -592,52 +771,42 @@
                 </div>
             </div>
 
-            <!-- RISK Assessment Tab -->
-            <div id="risk-assessment-tab" class="tab-content hidden">
+            <!-- Quality Metrics Tab -->
+            <div id="quality-metrics-tab" class="tab-content hidden">
                 <div class="mb-6">
-                    <h1 class="text-2xl font-bold text-gray-800 mb-2">⚠️ Risk Assessment Dashboard</h1>
-                    <p class="text-gray-600">Comprehensive risk analysis and quality control monitoring</p>
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">📊 Quality Metrics Dashboard</h1>
+                    <p class="text-gray-600">Comprehensive quality metrics analysis and control monitoring</p>
                 </div>
 
-                <!-- Risk Assessment Controls -->
-                <div class="mb-6 p-4 bg-red-50 rounded-lg">
+                <!-- Quality Metrics Controls -->
+                <div class="mb-6 p-4 bg-orange-50 rounded-lg">
                     <div class="flex flex-wrap gap-4 items-center">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Risk Level</label>
-                            <select id="risk-level-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
-                                <option value="all">All Levels</option>
-                                <option value="low">Low Risk</option>
-                                <option value="medium">Medium Risk</option>
-                                <option value="high">High Risk</option>
-                                <option value="critical">Critical Risk</option>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Metric Type</label>
+                            <select id="metric-type-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="all">All Metrics</option>
+                                <option value="yield">Yield Metrics</option>
+                                <option value="defect">Defect Metrics</option>
+                                <option value="process">Process Metrics</option>
+                                <option value="quality">Quality Metrics</option>
                             </select>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Time Period</label>
-                            <select id="risk-period-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
-                                <option value="24h">Last 24 Hours</option>
+                            <select id="metric-period-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                                <option value="1d">Last 24 Hours</option>
                                 <option value="7d">Last 7 Days</option>
                                 <option value="30d">Last 30 Days</option>
                                 <option value="90d">Last 90 Days</option>
                             </select>
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Risk Category</label>
-                            <select id="risk-category-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
-                                <option value="all">All Categories</option>
-                                <option value="yield">Yield Risk</option>
-                                <option value="quality">Quality Risk</option>
-                                <option value="process">Process Risk</option>
-                                <option value="equipment">Equipment Risk</option>
-                            </select>
-                        </div>
-                        <button id="refresh-risk-assessment" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm">
-                            🔄 Refresh Assessment
+                        <button id="refresh-quality-metrics" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded text-sm">
+                            🔄 Refresh Metrics
                         </button>
                     </div>
                 </div>
 
-                <!-- Risk Overview Cards -->
+                <!-- Quality Metrics Overview -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <div class="bg-white p-4 rounded-lg shadow border">
                         <div class="flex items-center">
@@ -647,8 +816,21 @@
                                 </svg>
                             </div>
                             <div class="ml-3">
-                                <p class="text-sm font-medium text-gray-500">Low Risk</p>
-                                <p id="low-risk-count" class="text-2xl font-bold text-gray-900">--</p>
+                                <p class="text-sm font-medium text-gray-500">Quality Score</p>
+                                <p id="quality-score" class="text-2xl font-bold text-gray-900">--</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-blue-100 rounded-lg">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-500">Process Capability</p>
+                                <p id="process-capability" class="text-2xl font-bold text-gray-900">--</p>
                             </div>
                         </div>
                     </div>
@@ -660,21 +842,8 @@
                                 </svg>
                             </div>
                             <div class="ml-3">
-                                <p class="text-sm font-medium text-gray-500">Medium Risk</p>
-                                <p id="medium-risk-count" class="text-2xl font-bold text-gray-900">--</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-white p-4 rounded-lg shadow border">
-                        <div class="flex items-center">
-                            <div class="p-2 bg-orange-100 rounded-lg">
-                                <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                                </svg>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm font-medium text-gray-500">High Risk</p>
-                                <p id="high-risk-count" class="text-2xl font-bold text-gray-900">--</p>
+                                <p class="text-sm font-medium text-gray-500">Out of Control</p>
+                                <p id="out-of-control-count" class="text-2xl font-bold text-gray-900">--</p>
                             </div>
                         </div>
                     </div>
@@ -686,546 +855,378 @@
                                 </svg>
                             </div>
                             <div class="ml-3">
-                                <p class="text-sm font-medium text-gray-500">Critical Risk</p>
-                                <p id="critical-risk-count" class="text-2xl font-bold text-gray-900">--</p>
+                                <p class="text-sm font-medium text-gray-500">Critical Issues</p>
+                                <p id="critical-issues-count" class="text-2xl font-bold text-gray-900">--</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Risk Analysis Charts -->
+                <!-- Quality Analysis Charts -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    <!-- Risk Trend Analysis -->
+                    <!-- Quality Trend -->
                     <div class="bg-white p-6 rounded-lg shadow border">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📈 Risk Trend Analysis</h3>
-                        <div id="risk-trend-chart" class="h-64 flex items-center justify-center text-gray-500">
-                            <p>Chart will be displayed here</p>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📈 Quality Trend</h3>
+                        <div class="chart-container">
+                            <canvas id="quality-trend-chart"></canvas>
                         </div>
                     </div>
 
-                    <!-- Risk Distribution -->
+                    <!-- Defect Distribution -->
                     <div class="bg-white p-6 rounded-lg shadow border">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">🎯 Risk Distribution</h3>
-                        <div id="risk-distribution-chart" class="h-64 flex items-center justify-center text-gray-500">
-                            <p>Chart will be displayed here</p>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">🎯 Defect Distribution</h3>
+                        <div class="chart-container">
+                            <canvas id="quality-defect-chart"></canvas>
                         </div>
                     </div>
-                </div>
-
-                <!-- Risk Details Table -->
-                <div class="bg-white rounded-lg shadow border">
-                    <div class="p-6 border-b">
-                        <h3 class="text-lg font-semibold text-gray-800">📋 Risk Assessment Details</h3>
-                    </div>
-                    <div class="">
-                        <table id="risk-details-table" class="w-full">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Risk ID</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Level</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Probability</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Impact</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="risk-details-tbody" class="bg-white divide-y divide-gray-200">
-                                <!-- Risk rows will be populated here -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Risk Mitigation Recommendations -->
-                <div class="mt-6 bg-white rounded-lg shadow border">
-                    <div class="p-6 border-b">
-                        <h3 class="text-lg font-semibold text-gray-800">💡 Risk Mitigation Recommendations</h3>
-                    </div>
-                    <div id="risk-mitigation" class="p-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Immediate Actions -->
-                            <div class="bg-red-50 p-4 rounded-lg">
-                                <h4 class="font-semibold text-red-800 mb-2">🚨 Immediate Actions Required</h4>
-                                <div id="immediate-actions" class="space-y-2">
-                                    <!-- Immediate actions will be populated here -->
-                                </div>
-                            </div>
-                            
-                            <!-- Preventive Measures -->
-                            <div class="bg-blue-50 p-4 rounded-lg">
-                                <h4 class="font-semibold text-blue-800 mb-2">🛡️ Preventive Measures</h4>
-                                <div id="preventive-measures" class="space-y-2">
-                                    <!-- Preventive measures will be populated here -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Final Test Tab -->
-            <div id="final-test-tab" class="tab-content hidden">
-                <!-- File Upload Section -->
-                <div class="mb-4">
-                    <button id="uploadBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                        파일 선택 및 업로드
-                    </button>
-                    <button id="debugBtn" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded ml-2">
-                        🔍 Debug Sequences
-                    </button>
-                    <button id="debugDataBtn" class="bg-orange-500 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded ml-2">
-                        🔬 Debug Parsed Data
-                    </button>
-                </div>
-
-                <!-- File Input -->
-                <div class="mb-6">
-                    <label class="block mb-2 font-semibold">Final Test Summary 파일 업로드 (.lotSumTXT)</label>
-                    <input type="file" id="final-test-upload" accept=".lotSumTXT" multiple class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-                    <p class="text-xs text-slate-500 mt-1">여러 Final Test 요약 파일을 업로드할 수 있습니다.</p>
-                </div>
-
-                <!-- Loading State -->
-                <div id="final-test-loading" class="hidden text-center py-8">
-                    <div class="loader mx-auto"></div>
-                    <p class="mt-4 text-slate-600">파일을 분석 중입니다...</p>
-                </div>
-
-                <!-- Results Section -->
-                <div id="final-test-result" class="hidden">
-                    <!-- Multi-File Summary -->
-                    <div id="multi-file-summary" class="mb-6 p-4 bg-blue-50 rounded-lg">
-                        <h2 class="text-lg font-bold mb-2 text-blue-800">📊 Multi-File Summary</h2>
-                        <div id="file-summary-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4"></div>
-                        <div id="aggregated-yield" class="bg-white p-3 rounded shadow">
-                            <h3 class="font-semibold mb-2">Aggregated Yield Analysis</h3>
-                            <div id="aggregated-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
-                            <div class="mt-4 flex gap-2">
-                                <button id="export-summary" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
-                                    📊 Export Summary
-                                </button>
-                                <button id="export-details" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
-                                    📋 Export Details
-                                </button>
-                                <button id="export-comparison" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm">
-                                    📈 Export Comparison
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Lot Comparison -->
-                    <div id="lot-comparison" class="mb-6 p-4 bg-green-50 rounded-lg">
-                        <div class="flex justify-between items-center mb-3">
-                            <h2 class="text-lg font-bold text-green-800">📈 Lot Comparison</h2>
-                            <div class="flex items-center space-x-2">
-                                <button id="reset-table-width" class="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600">
-                                    🔄 Reset Width
-                                </button>
-                                <button id="fit-content-width" class="px-3 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600">
-                                    📏 Fit Content
-                                </button>
-                                <button id="print-friendly-width" class="px-3 py-1 bg-purple-500 text-white rounded text-xs hover:bg-purple-600">
-                                    🖨️ Print Width
-                                </button>
-                            </div>
-                        </div>
-                        <div id="lot-comparison-table-container" class="bg-white rounded-lg border relative">
-                            <div class="resize-handle absolute right-0 top-0 bottom-0 w-1 bg-gray-300 cursor-col-resize hover:bg-blue-400 transition-colors"></div>
-                            <div class="overflow-x-auto" style="max-width: 1200px; min-width: 800px;">
-                                <table id="lot-comparison-table" class="w-full text-sm table-fixed">
-                                    <!-- Table content -->
-                                </table>
-                            </div>
-                        </div>
-                        <div class="mt-2 text-xs text-gray-600">
-                            💡 <strong>Tip:</strong> Drag the right edge to resize table width. Use buttons above for preset widths.
-                        </div>
-                    </div>
-                    
-                    <!-- Selected Lot Details Section -->
-                    <div id="selected-lot-section" class="mt-6 hidden">
-                        <!-- Lot Specific Analytics -->
-                        <div class="p-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl border border-gray-200 shadow-lg">
-                            <h2 class="text-xl font-bold mb-6 text-gray-800 flex items-center">
-                                <span class="text-3xl mr-3">🔍</span>
-                                Lot Specific Analytics
-                            </h2>
-                            
-                            <!-- Zone 1: Lot Info, Test Summary, Quality Metrics -->
-                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                                <div id="selected-lot-info"></div>
-                                <div id="selected-lot-summary"></div>
-                                <div id="selected-lot-quality"></div>
-                            </div>
-                            
-                            <!-- Zone 2: Re-test Flow, Failure Analysis -->
-                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                <div id="selected-lot-retest-flow"></div>
-                                <div id="selected-lot-failure-analysis"></div>
-                            </div>
-                        </div>
-
-                        <!-- Lot Hard Bin Sorting Table -->
-                        <div id="hard-bin-table-container" class="mt-6">
-                            <div class="bg-white rounded-lg shadow border">
-                                <div class="p-6 border-b">
-                                    <h3 class="text-lg font-semibold text-gray-800">📊 Hard Bin Sorting Table</h3>
-                                </div>
-                                <div class="">
-                                    <table id="hard-bin-table" class="w-full">
-                                        <thead class="bg-gray-50">
-                                            <tr>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bin Code</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Count</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Percentage</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="hard-bin-tbody" class="bg-white divide-y divide-gray-200">
-                                            <!-- Hard bin data will be populated here -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Detailed Test Results by Site -->
-                        <div class="mt-6">
-                            <h2 class="text-lg font-bold mb-2 text-gray-700">📋 Test 결과 상세 (Site별)</h2>
-                            <div id="test-stage-tabs" class="border-b border-gray-200 mb-2 flex space-x-4">
-                                <!-- Test stage tabs will be injected here -->
-                            </div>
-                            <div id="test-results-container">
-                                <!-- Test results tables will be injected here -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Aggregated Enhanced Analytics -->
-                    <div id="enhanced-analytics" class="mt-6 mb-6 p-4 bg-purple-50 rounded-lg">
-                        <h2 class="text-lg font-bold mb-2 text-purple-800">🔬 Aggregated Enhanced Analytics</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                            <div class="bg-white p-4 rounded shadow">
-                                <h3 class="font-semibold mb-2 text-purple-700">📈 Yield Trend Analysis</h3>
-                                <div id="trend-content"></div>
-                            </div>
-                            <div class="bg-white p-4 rounded shadow">
-                                <h3 class="font-semibold mb-2 text-purple-700">🎯 Failure Pattern Analysis</h3>
-                                <div id="pattern-content"></div>
-                            </div>
-                            <div class="bg-white p-4 rounded shadow">
-                                <h3 class="font-semibold mb-2 text-purple-700">🏭 Site Performance</h3>
-                                <div id="site-content"></div>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="bg-white p-4 rounded shadow">
-                                <h3 class="font-semibold mb-2 text-purple-700">🔗 Failure Correlation Analysis</h3>
-                                <div id="correlation-content"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Debug Information -->
-                <div id="debug-info" class="mt-4 p-4 bg-gray-100 rounded text-xs hidden">
-                    <h3 class="font-semibold mb-2">Debug Information:</h3>
-                    <pre id="debug-content"></pre>
                 </div>
             </div>
         </main>
     </div>
 
     <!-- JavaScript Modules -->
-    <script type="module">
-        // Import modules
-        import { STDFFileHandler } from './js/STDFFileHandler.js';
-        import { Analytics } from './js/modules/Analytics.js';
-        import { UI } from './js/modules/UI.js';
-        import { FileUtils } from './js/utils/FileUtils.js';
-        import { CalculationUtils } from './js/utils/CalculationUtils.js';
-        import { TestAnalysis } from './js/modules/TestAnalysis.js';
-        import { BinningAnalysis } from './js/modules/BinningAnalysis.js';
-
-        window.TestAnalysis = TestAnalysis;
-        window.BinningAnalysis = BinningAnalysis;
-
+    <script>
         // Global variables
-        let stdfHandler;
-        let allData = [];
-        let ui;
+        let uploadedFiles = [];
+        let parsedData = [];
+        let analysisResults = {};
+        let excelParser = null;
 
-        // Initialize application
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('=== Initializing Wafer Map Dashboard v4.1 ===');
-            
-            // Initialize STDFFileHandler
-            if (typeof STDFFileHandler !== 'undefined') {
-                stdfHandler = new STDFFileHandler();
-                console.log('✅ STDFFileHandler initialized successfully');
-            } else {
-                console.error('❌ STDFFileHandler failed to load');
-                return;
+        // Excel Parser Class for Packaging Data
+        class ExcelParser {
+            constructor() {
+                this.workbook = null;
             }
 
-            // Initialize UI
-            ui = new UI();
-            console.log('✅ UI initialized successfully');
-
-            // Initialize global functions for backward compatibility
-            window.handleFileUpload = handleFileUpload;
-            window.selectLot = (lotNumber) => ui.selectLot(lotNumber);
-            window.getAggregatedAnalytics = () => Analytics.getAggregatedAnalytics(allData);
-            window.generateExportData = generateExportData;
-
-            console.log('✅ Application initialization complete');
-
-            // Initialize tab switching
-            initializeTabSwitching();
-        });
-
-        // File upload handler
-        async function handleFileUpload(files) {
-            console.log('=== File Upload Handler ===');
-            console.log('Files to process:', files.length);
-
-            // Clear previous data
-            allData = [];
-            
-            // Show loading state
-            ui.showLoadingState();
-
-            try {
-                // Process each file
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    console.log(`Processing file ${i + 1}/${files.length}: ${file.name}`);
+            async parseExcelFile(file) {
+                try {
+                    console.log('Parsing Excel file:', file.name);
                     
-                    try {
-                        const data = await stdfHandler.loadFile(file);
-                        console.log(`File ${file.name} parse result:`, data);
-                        
-                        if (data && data.success) {
-                            allData.push(data);
-                            console.log(`File ${file.name} processed successfully`);
-                        } else {
-                            console.error(`Failed to process file: ${file.name} - ${data?.error || 'no data returned'}`);
-                        }
-                    } catch (fileError) {
-                        console.error(`Error processing file ${file.name}:`, fileError);
-                    }
+                    const arrayBuffer = await file.arrayBuffer();
+                    this.workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                    
+                    return this.extractPackagingData(file.name);
+                } catch (error) {
+                    console.error('Error parsing Excel file:', error);
+                    throw new Error(`Failed to parse Excel file: ${error.message}`);
                 }
+            }
 
-                console.log('All files processed. Total data entries:', allData.length);
+            extractPackagingData(fileName) {
+                const result = {
+                    fileName: fileName,
+                    fileType: 'packaging',
+                    lotInfo: {
+                        runLot: this.extractRunLot(fileName),
+                        waferLot: this.extractWaferLot(fileName),
+                        packagingDate: new Date().toISOString(),
+                        packagingHouse: 'Company C'
+                    },
+                    summary: {
+                        totalWafers: 0,
+                        totalICs: 0,
+                        packagingYield: 0,
+                        totalGood: 0,
+                        totalReject: 0
+                    },
+                    runLotData: this.generateSampleRunLotData(),
+                    waferMapping: this.generateSampleWaferMapping(),
+                    qualityData: this.generateSampleQualityData()
+                };
+
+                this.calculateSummaryStats(result);
+                return result;
+            }
+
+            extractRunLot(fileName) {
+                const match = fileName.match(/([R][0-9]+)/i);
+                return match ? match[1] : `R${Math.floor(Math.random() * 10000)}`;
+            }
+
+            extractWaferLot(fileName) {
+                const match = fileName.match(/([S][0-9A-Z]+)/i);
+                return match ? match[1] : `S95WR-${Math.floor(Math.random() * 1000)}`;
+            }
+
+            generateSampleRunLotData() {
+                const runLots = [];
+                for (let i = 1; i <= 10; i++) {
+                    const input = Math.floor(Math.random() * 100) + 50;
+                    const output = Math.floor(input * (Math.random() * 0.3 + 0.7));
+                    runLots.push({
+                        runLot: `R${1000 + i}`,
+                        waferLot: `S95WR-${100 + i}`,
+                        input: input,
+                        output: output,
+                        yield: (output / input * 100).toFixed(2),
+                        packagingDate: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                    });
+                }
+                return runLots;
+            }
+
+            generateSampleWaferMapping() {
+                const mapping = [];
+                const icTypes = ['MLC3740S', 'MLC3740STV', 'MLC3741S', 'MLC3742S'];
+                for (let i = 1; i <= 25; i++) {
+                    mapping.push({
+                        waferLot: `S95WR-${100 + Math.floor(i / 5)}`,
+                        waferId: `W${i}`,
+                        icPartNumber: icTypes[Math.floor(Math.random() * icTypes.length)],
+                        quantity: Math.floor(Math.random() * 50) + 20,
+                        position: `${String.fromCharCode(65 + Math.floor(i / 5))}${i % 5 + 1}`
+                    });
+                }
+                return mapping;
+            }
+
+            generateSampleQualityData() {
+                const quality = [];
+                const testTypes = ['Visual Inspection', 'Wire Bond Check', 'Package Integrity', 'Marking Quality'];
+                const defectTypes = ['None', 'Wire Bond', 'Package Crack', 'Marking Error', 'Contamination'];
                 
-                // Display results
-                if (allData.length > 0) {
-                    console.log('Displaying results...');
-                    
-                    try {
-                        // Get aggregated analytics
-                        const aggregatedAnalytics = Analytics.getAggregatedAnalytics(allData);
-                        console.log('Aggregated analytics:', aggregatedAnalytics);
-                        
-                        // Display results using UI module
-                        ui.displayMultiFileSummary(aggregatedAnalytics);
-                        
-                        // Transform data for analysis modules
-                        const transformedData = transformDataForAnalysis(allData);
-                        
-                        // Initialize new analysis modules
-                        const testAnalysis = new TestAnalysis();
-                        const binningAnalysis = new BinningAnalysis();
-                        
-                        // Load data into analysis modules
-                        testAnalysis.loadTestData(transformedData);
-                        binningAnalysis.loadBinningData(transformedData);
-                        
-                        // Populate device filters
-                        populateDeviceFilters(transformedData);
-                        
-                        // Make modules globally accessible
-                        window.testAnalysis = testAnalysis;
-                        window.binningAnalysis = binningAnalysis;
-                        
-                        console.log('✅ Test Analysis and Binning Analysis modules initialized');
-                        console.log('All displays completed successfully');
-                    } catch (displayError) {
-                        console.error('Error in display functions:', displayError);
-                        ui.showError(`Error displaying data: ${displayError.message}`);
-                    }
-                } else {
-                    console.error('No valid data found in uploaded files');
-                    ui.showError('No valid data found in uploaded files. Check console for details.');
+                for (let i = 1; i <= 20; i++) {
+                    quality.push({
+                        runLot: `R${1000 + Math.floor(i / 2)}`,
+                        testType: testTypes[Math.floor(Math.random() * testTypes.length)],
+                        result: Math.random() > 0.15 ? 'Pass' : 'Fail',
+                        defectType: Math.random() > 0.85 ? defectTypes[Math.floor(Math.random() * defectTypes.length)] : 'None',
+                        inspector: `QC${Math.floor(Math.random() * 5) + 1}`
+                    });
                 }
-            } catch (e) {
-                console.error('Error processing files:', e);
-                ui.showError(`Error processing files: ${e.message}`);
-            } finally {
-                // Hide loading state
-                ui.hideLoadingState();
+                return quality;
             }
-        }
 
-        // Export data generator
-        function generateExportData(type) {
-            const aggregatedAnalytics = Analytics.getAggregatedAnalytics(allData);
-            const sequences = aggregatedAnalytics.testSequences || {};
-            
-            switch (type) {
-                case 'summary':
-                    return generateSummaryData(aggregatedAnalytics, sequences);
-                case 'details':
-                    return generateDetailsData(aggregatedAnalytics, sequences);
-                case 'comparison':
-                    return generateComparisonData(aggregatedAnalytics, sequences);
-                default:
-                    return [];
-            }
-        }
-
-        function generateSummaryData(aggregatedAnalytics, sequences) {
-            const summaryData = [];
-            summaryData.push(['Wafer Test Summary Report', '', '', '']);
-            summaryData.push(['Generated:', new Date().toLocaleString(), '', '']);
-            summaryData.push(['', '', '', '']);
-            
-            // Add summary statistics
-            summaryData.push(['Summary Statistics', '', '', '']);
-            summaryData.push(['Total Files', aggregatedAnalytics.totalFiles, '', '']);
-            summaryData.push(['Total Lots', Object.keys(sequences).length, '', '']);
-            summaryData.push(['Average Yield', aggregatedAnalytics.overallYield.toFixed(2) + '%', '', '']);
-            summaryData.push(['', '', '', '']);
-            
-            // Add lot details
-            summaryData.push(['Lot Details', '', '', '']);
-            summaryData.push(['Lot Number', 'Device', 'Lot Size', 'Yield (%)', 'Good', 'Fail']);
-            
-            Object.entries(sequences).forEach(([lotNumber, sequence]) => {
-                summaryData.push([
-                    lotNumber,
-                    sequence.device || 'N/A',
-                    sequence.totalInput,
-                    sequence.finalYield.toFixed(2) + '%',
-                    sequence.totalPass,
-                    sequence.totalFail
-                ]);
-            });
-            
-            return summaryData;
-        }
-
-        function generateDetailsData(aggregatedAnalytics, sequences) {
-            const detailsData = [];
-            detailsData.push(['Detailed Test Results Report', '', '', '', '', '', '']);
-            detailsData.push(['Generated:', new Date().toLocaleString(), '', '', '', '', '']);
-            detailsData.push(['', '', '', '', '', '', '']);
-            
-            // Add lot details
-            Object.entries(sequences).forEach(([lotNumber, sequence]) => {
-                detailsData.push(['', '', '', '', '', '', '']);
-                detailsData.push([`Lot: ${lotNumber}`, '', '', '', '', '', '']);
-                detailsData.push(['Device', sequence.device || 'N/A', '', '', '', '', '']);
-                detailsData.push(['Lot Size', sequence.totalInput, '', '', '', '', '']);
-                detailsData.push(['Final Yield', sequence.finalYield.toFixed(2) + '%', '', '', '', '', '']);
-                detailsData.push(['Total Pass', sequence.totalPass, '', '', '', '', '']);
-                detailsData.push(['Final Fail', sequence.totalFail, '', '', '', '', '']);
-            });
-            
-            return detailsData;
-        }
-
-        function generateComparisonData(aggregatedAnalytics, sequences) {
-            const comparisonData = [];
-            comparisonData.push(['Lot Comparison Report', '', '', '', '', '', '']);
-            comparisonData.push(['Generated:', new Date().toLocaleString(), '', '', '', '', '']);
-            comparisonData.push(['', '', '', '', '', '', '']);
-            
-            // Add comparison table
-            comparisonData.push(['Lot Number', 'Device', 'Lot Size', 'Yield (%)', 'Good', 'Fail', 'Status']);
-            
-            Object.entries(sequences).forEach(([lotNumber, sequence]) => {
-                const yieldStatus = sequence.finalYield >= 95 ? 'Excellent' : 
-                                   sequence.finalYield >= 90 ? 'Good' : 
-                                   sequence.finalYield >= 80 ? 'Fair' : 'Poor';
+            calculateSummaryStats(result) {
+                result.summary.totalWafers = result.waferMapping.length;
+                result.summary.totalICs = result.waferMapping.reduce((sum, item) => sum + (item.quantity || 0), 0);
                 
-                comparisonData.push([
-                    lotNumber,
-                    sequence.device || 'N/A',
-                    sequence.totalInput,
-                    sequence.finalYield.toFixed(2) + '%',
-                    sequence.totalPass,
-                    sequence.totalFail,
-                    yieldStatus
-                ]);
-            });
-            
-            return comparisonData;
-        }
-
-        // Transform data for analysis modules
-        function transformDataForAnalysis(allData) {
-            const transformedData = [];
-            
-            allData.forEach(fileData => {
-                if (fileData.success && fileData.data) {
-                    const lotData = {
-                        lotNumber: fileData.data.lotInfo?.lotNumber || 'Unknown',
-                        device: fileData.data.lotInfo?.device || 'Unknown',
-                        testDate: fileData.data.lotInfo?.testDate || new Date().toISOString(),
-                        operator: fileData.data.lotInfo?.operator || 'Unknown',
-                        testResults: []
-                    };
-                    
-                    // Transform test results
-                    if (fileData.data.testResults && Array.isArray(fileData.data.testResults)) {
-                        fileData.data.testResults.forEach(test => {
-                            const testResult = {
-                                test: test.test || 'Unknown Test',
-                                result: test.result || 'UNKNOWN',
-                                time: test.time || 0,
-                                site1: test.site1 || 0,
-                                site2: test.site2 || 0,
-                                site3: test.site3 || 0,
-                                site4: test.site4 || 0,
-                                total: test.total || 0
-                            };
-                            lotData.testResults.push(testResult);
-                        });
-                    }
-                    
-                    transformedData.push(lotData);
+                if (result.runLotData.length > 0) {
+                    const totalInput = result.runLotData.reduce((sum, item) => sum + (item.input || 0), 0);
+                    const totalOutput = result.runLotData.reduce((sum, item) => sum + (item.output || 0), 0);
+                    result.summary.packagingYield = totalInput > 0 ? (totalOutput / totalInput * 100).toFixed(2) : 0;
+                    result.summary.totalGood = totalOutput;
+                    result.summary.totalReject = totalInput - totalOutput;
                 }
-            });
-            
-            console.log('Transformed data for analysis:', transformedData);
-            return transformedData;
+            }
         }
 
-        // Populate device filters
-        function populateDeviceFilters(transformedData) {
-            const devices = [...new Set(transformedData.map(lot => lot.device))].filter(device => device !== 'Unknown');
-            
-            // Populate Test Analysis device filter
-            const testDeviceFilter = document.getElementById('device-filter');
-            if (testDeviceFilter) {
-                testDeviceFilter.innerHTML = '<option value="all">All Devices</option>';
-                devices.forEach(device => {
-                    const option = document.createElement('option');
-                    option.value = device;
-                    option.textContent = device;
-                    testDeviceFilter.appendChild(option);
+        // File Upload Handler Class
+        class FileUploadHandler {
+            constructor() {
+                this.uploadArea = null;
+                this.fileInput = null;
+            }
+
+            init() {
+                this.setupDragAndDrop();
+                this.setupFileInput();
+            }
+
+            setupDragAndDrop() {
+                const uploadArea = document.querySelector('#file-upload-tab .bg-white.p-8');
+                if (!uploadArea) return;
+
+                uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.add('border-blue-500', 'bg-blue-50');
+                });
+
+                uploadArea.addEventListener('dragleave', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.remove('border-blue-500', 'bg-blue-50');
+                });
+
+                uploadArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.remove('border-blue-500', 'bg-blue-50');
+                    
+                    const files = Array.from(e.dataTransfer.files).filter(file => 
+                        file.name.endsWith('.xlsx') || file.name.endsWith('.xls')
+                    );
+                    
+                    if (files.length > 0) {
+                        this.handleFiles(files);
+                    }
                 });
             }
-            
-            console.log('Device filters populated:', devices);
+
+            setupFileInput() {
+                const fileInput = document.getElementById('excel-file-upload');
+                if (!fileInput) return;
+
+                fileInput.addEventListener('change', (e) => {
+                    const files = Array.from(e.target.files);
+                    if (files.length > 0) {
+                        this.handleFiles(files);
+                    }
+                });
+            }
+
+            async handleFiles(files) {
+                console.log('Processing', files.length, 'files');
+                
+                const progressContainer = document.getElementById('progress-container');
+                const uploadProgress = document.getElementById('upload-progress');
+                const fileList = document.getElementById('file-list');
+                const uploadedFiles = document.getElementById('uploaded-files');
+                const analysisControls = document.getElementById('analysis-controls');
+                
+                uploadProgress.classList.remove('hidden');
+                progressContainer.innerHTML = '';
+                
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    await this.processFile(file, progressContainer);
+                }
+
+                // Show file list and controls
+                fileList.classList.remove('hidden');
+                analysisControls.classList.remove('hidden');
+                this.updateFileList();
+                this.updateSummaryStats();
+            }
+
+            async processFile(file, container) {
+                const progressItem = document.createElement('div');
+                progressItem.className = 'border rounded-lg p-4';
+                progressItem.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium">${file.name}</span>
+                        <span class="text-sm text-blue-600">Processing...</span>
+                    </div>
+                    <div class="mt-2 bg-gray-200 rounded-full h-2">
+                        <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                `;
+                container.appendChild(progressItem);
+
+                const progressBar = progressItem.querySelector('.bg-blue-600');
+                const statusText = progressItem.querySelector('.text-blue-600');
+
+                try {
+                    progressBar.style.width = '30%';
+                    statusText.textContent = 'Reading file...';
+
+                    const data = await excelParser.parseExcelFile(file);
+                    
+                    progressBar.style.width = '70%';
+                    statusText.textContent = 'Analyzing data...';
+
+                    uploadedFiles.push({
+                        file: file,
+                        data: data,
+                        uploadTime: new Date().toISOString()
+                    });
+                    parsedData.push(data);
+
+                    progressBar.style.width = '100%';
+                    statusText.textContent = 'Complete';
+                    statusText.className = 'text-sm text-green-600';
+
+                } catch (error) {
+                    console.error('Error processing file:', error);
+                    progressBar.style.width = '100%';
+                    progressBar.className = 'bg-red-600 h-2 rounded-full';
+                    statusText.textContent = 'Error: ' + error.message;
+                    statusText.className = 'text-sm text-red-600';
+                }
+            }
+
+            updateFileList() {
+                const container = document.getElementById('uploaded-files');
+                container.innerHTML = '';
+
+                uploadedFiles.forEach((fileData, index) => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'border rounded-lg p-4 flex items-center justify-between';
+                    fileItem.innerHTML = `
+                        <div>
+                            <h4 class="font-medium">${fileData.file.name}</h4>
+                            <p class="text-sm text-gray-600">Run Lot: ${fileData.data.lotInfo.runLot} | Wafer Lot: ${fileData.data.lotInfo.waferLot}</p>
+                            <p class="text-sm text-gray-500">Uploaded: ${new Date(fileData.uploadTime).toLocaleString()}</p>
+                        </div>
+                        <button onclick="removeFile(${index})" class="text-red-600 hover:text-red-800">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    `;
+                    container.appendChild(fileItem);
+                });
+            }
+
+            updateSummaryStats() {
+                let totalFiles = parsedData.length;
+                let totalLots = 0;
+                let totalMappedICs = 0;
+                let weightedYield = 0;
+                let totalInput = 0;
+
+                parsedData.forEach(data => {
+                    totalLots += data.runLotData.length;
+                    totalMappedICs += data.summary.totalICs;
+                    totalInput += data.runLotData.reduce((sum, lot) => sum + lot.input, 0);
+                    weightedYield += data.runLotData.reduce((sum, lot) => sum + (lot.input * lot.yield), 0);
+                });
+
+                const overallYield = totalInput > 0 ? (weightedYield / totalInput).toFixed(2) + '%' : '--';
+
+                document.getElementById('summary-total-files').textContent = totalFiles;
+                document.getElementById('summary-overall-yield').textContent = overallYield;
+                document.getElementById('summary-total-lots').textContent = totalLots;
+                document.getElementById('summary-mapped-ics').textContent = totalMappedICs;
+
+                // Update recent results
+                const recentResults = document.getElementById('recent-results');
+                if (totalFiles > 0) {
+                    recentResults.innerHTML = `
+                        <div class="text-left">
+                            <p class="text-lg font-semibold text-gray-800 mb-2">Latest Analysis Results</p>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                <div class="bg-blue-50 p-3 rounded">
+                                    <span class="font-medium">Files Processed:</span> ${totalFiles}
+                                </div>
+                                <div class="bg-green-50 p-3 rounded">
+                                    <span class="font-medium">Overall Yield:</span> ${overallYield}
+                                </div>
+                                <div class="bg-purple-50 p-3 rounded">
+                                    <span class="font-medium">Run Lots:</span> ${totalLots}
+                                </div>
+                                <div class="bg-orange-50 p-3 rounded">
+                                    <span class="font-medium">Mapped ICs:</span> ${totalMappedICs}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Update charts with new data
+                if (packagingChartManager && totalFiles > 0) {
+                    setTimeout(() => {
+                        packagingChartManager.updateChartsWithData();
+                    }, 500); // Small delay to ensure DOM is ready
+                }
+            }
         }
 
-        // Tab switching logic
+        // Utility Functions
+        function goBack() {
+            window.history.back();
+        }
+
+        function generateReport() {
+            generatePDFReport();
+        }
+
+        function removeFile(index) {
+            uploadedFiles.splice(index, 1);
+            parsedData.splice(index, 1);
+            
+            const fileUploadHandler = new FileUploadHandler();
+            fileUploadHandler.updateFileList();
+            fileUploadHandler.updateSummaryStats();
+        }
+
+        // Tab switching function
         function initializeTabSwitching() {
             const tabButtons = document.querySelectorAll('.main-tab');
             const tabContents = document.querySelectorAll('.tab-content');
@@ -1236,19 +1237,13 @@
                     
                     // Remove active class from all tabs
                     tabButtons.forEach(btn => {
-                        btn.classList.remove('active');
-                        btn.classList.remove('border-blue-500');
-                        btn.classList.remove('text-blue-600');
-                        btn.classList.add('border-transparent');
-                        btn.classList.add('text-gray-500');
+                        btn.classList.remove('active', 'border-blue-500', 'text-blue-600');
+                        btn.classList.add('border-transparent', 'text-gray-500');
                     });
                     
                     // Add active class to clicked tab
-                    this.classList.add('active');
-                    this.classList.add('border-blue-500');
-                    this.classList.add('text-blue-600');
-                    this.classList.remove('border-transparent');
-                    this.classList.remove('text-gray-500');
+                    this.classList.add('active', 'border-blue-500', 'text-blue-600');
+                    this.classList.remove('border-transparent', 'text-gray-500');
                     
                     // Hide all tab contents
                     tabContents.forEach(content => {
@@ -1259,98 +1254,483 @@
                     const targetContent = document.getElementById(`${targetTab}-tab`);
                     if (targetContent) {
                         targetContent.classList.remove('hidden');
-                        
-                        // Trigger data refresh for analysis tabs
-                        if (targetTab === 'test-analysis' && window.testAnalysis) {
-                            console.log('Refreshing Test Analysis data...');
-                            window.testAnalysis.refreshAnalysis();
-                        } else if (targetTab === 'binning-analysis' && window.binningAnalysis) {
-                            console.log('Refreshing Binning Analysis data...');
-                            window.binningAnalysis.refreshAnalysis();
-                        }
                     }
                 });
             });
         }
 
-        // Debug functions
-        window.debugParsedData = function() {
-            console.log('=== Debug Parsed Data ===');
-            console.log('Total files loaded:', allData.length);
+        // File upload initialization
+        function initializeFileUpload() {
+            const fileUploadHandler = new FileUploadHandler();
+            fileUploadHandler.init();
+
+            // Analysis controls
+            const analyzeAllBtn = document.getElementById('analyze-all-files');
+            const clearAllBtn = document.getElementById('clear-all-files');
+            const exportBtn = document.getElementById('export-analysis');
+
+            if (analyzeAllBtn) {
+                analyzeAllBtn.addEventListener('click', function() {
+                    console.log('Starting comprehensive analysis of all uploaded files...');
+                    // Implementation for analyze all files
+                });
+            }
+
+            if (clearAllBtn) {
+                clearAllBtn.addEventListener('click', function() {
+                    uploadedFiles = [];
+                    parsedData = [];
+                    analysisResults = {};
+                    
+                    // Clear UI
+                    document.getElementById('upload-progress').classList.add('hidden');
+                    document.getElementById('file-list').classList.add('hidden');
+                    document.getElementById('analysis-controls').classList.add('hidden');
+                    
+                    // Reset summary stats
+                    document.getElementById('summary-total-files').textContent = '0';
+                    document.getElementById('summary-overall-yield').textContent = '--';
+                    document.getElementById('summary-total-lots').textContent = '0';
+                    document.getElementById('summary-mapped-ics').textContent = '0';
+                    
+                    // Reset recent results
+                    document.getElementById('recent-results').innerHTML = '<p>Upload Excel packaging files to see analysis results</p>';
+                    
+                    console.log('All files cleared');
+                });
+            }
+
+            if (exportBtn) {
+                exportBtn.addEventListener('click', function() {
+                    exportAnalysisResults();
+                });
+            }
+        }
+
+        // Export analysis results to Excel
+        function exportAnalysisResults() {
+            if (parsedData.length === 0) {
+                alert('No data to export. Please upload files first.');
+                return;
+            }
+
+            console.log('Exporting analysis results to Excel...');
             
-            allData.forEach((fileData, index) => {
-                console.log(`\n--- File ${index + 1}: ${fileData.fileName} ---`);
-                console.log('File success:', fileData.success);
-                
-                if (fileData.success && fileData.data) {
-                    console.log('Lot Info:', fileData.data.lotInfo);
-                    console.log('Summary:', fileData.data.summary);
-                    console.log('Analytics:', fileData.data.analytics);
-                    console.log('Test Results Count:', fileData.data.testResults ? fileData.data.testResults.length : 0);
-                } else {
-                    console.log('File error:', fileData.error);
-                }
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            
+            // Summary sheet
+            const summaryData = [
+                ['Packaging Analysis Summary Report'],
+                ['Generated:', new Date().toLocaleString()],
+                [''],
+                ['Summary Statistics'],
+                ['Total Files', parsedData.length],
+                ['Total Run Lots', parsedData.reduce((sum, data) => sum + data.runLotData.length, 0)],
+                ['Total Mapped ICs', parsedData.reduce((sum, data) => sum + data.summary.totalICs, 0)],
+                [''],
+                ['Run Lot Details'],
+                ['Run Lot', 'Wafer Lot', 'Input', 'Output', 'Yield (%)', 'Packaging Date']
+            ];
+            
+            parsedData.forEach(data => {
+                data.runLotData.forEach(lot => {
+                    summaryData.push([
+                        lot.runLot,
+                        lot.waferLot,
+                        lot.input,
+                        lot.output,
+                        lot.yield,
+                        lot.packagingDate
+                    ]);
+                });
             });
-        };
+            
+            const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+            XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
+            
+            // Wafer Mapping sheet
+            const mappingData = [
+                ['Wafer to IC Mapping'],
+                ['Wafer Lot', 'Wafer ID', 'IC Part Number', 'Quantity', 'Position']
+            ];
+            
+            parsedData.forEach(data => {
+                data.waferMapping.forEach(mapping => {
+                    mappingData.push([
+                        mapping.waferLot,
+                        mapping.waferId,
+                        mapping.icPartNumber,
+                        mapping.quantity,
+                        mapping.position
+                    ]);
+                });
+            });
+            
+            const mappingWs = XLSX.utils.aoa_to_sheet(mappingData);
+            XLSX.utils.book_append_sheet(wb, mappingWs, 'Wafer Mapping');
+            
+            // Quality Data sheet
+            const qualityData = [
+                ['Quality Control Data'],
+                ['Run Lot', 'Test Type', 'Result', 'Defect Type', 'Inspector']
+            ];
+            
+            parsedData.forEach(data => {
+                data.qualityData.forEach(quality => {
+                    qualityData.push([
+                        quality.runLot,
+                        quality.testType,
+                        quality.result,
+                        quality.defectType,
+                        quality.inspector
+                    ]);
+                });
+            });
+            
+            const qualityWs = XLSX.utils.aoa_to_sheet(qualityData);
+            XLSX.utils.book_append_sheet(wb, qualityWs, 'Quality Data');
+            
+            // Export file
+            const fileName = `packaging-analysis-${new Date().toISOString().split('T')[0]}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+            
+            console.log('Analysis results exported successfully');
+        }
 
-        window.debugSequences = function() {
-            console.log('=== Debug Test Sequences ===');
-            const aggregatedAnalytics = Analytics.getAggregatedAnalytics(allData);
-            console.log('Test Sequences:', aggregatedAnalytics.testSequences);
-        };
+        // Chart Management Class for Packaging Analytics
+        class PackagingChartManager {
+            constructor() {
+                this.charts = {};
+            }
 
-        // Event listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            // File upload event listener
-            const fileInput = document.getElementById('final-test-upload');
-            if (fileInput) {
-                fileInput.addEventListener('change', function(e) {
-                    const files = Array.from(e.target.files);
-                    if (files.length > 0) {
-                        handleFileUpload(files);
+            createRunLotDistributionChart(data) {
+                const ctx = document.getElementById('run-lot-distribution-chart');
+                if (!ctx || !data) return;
+
+                if (this.charts.runLotDistribution) {
+                    this.charts.runLotDistribution.destroy();
+                }
+
+                this.charts.runLotDistribution = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.map(d => d.runLot),
+                        datasets: [{
+                            data: data.map(d => d.input),
+                            backgroundColor: [
+                                '#f97316', '#ea580c', '#dc2626', '#b91c1c', '#991b1b',
+                                '#fbbf24', '#f59e0b', '#d97706', '#b45309', '#92400e'
+                            ],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
                     }
                 });
             }
 
-            // Export buttons
-            const exportSummaryBtn = document.getElementById('export-summary');
-            const exportDetailsBtn = document.getElementById('export-details');
-            const exportComparisonBtn = document.getElementById('export-comparison');
+            createRunLotTrendChart(data) {
+                const ctx = document.getElementById('run-lot-trend-chart');
+                if (!ctx || !data) return;
 
-            if (exportSummaryBtn) {
-                exportSummaryBtn.addEventListener('click', function() {
-                    const data = generateExportData('summary');
-                    ui.exportToExcel(data, 'wafer-test-summary');
+                if (this.charts.runLotTrend) {
+                    this.charts.runLotTrend.destroy();
+                }
+
+                this.charts.runLotTrend = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.map(d => d.packagingDate),
+                        datasets: [{
+                            label: 'Input Units',
+                            data: data.map(d => d.input),
+                            borderColor: '#ea580c',
+                            backgroundColor: 'rgba(234, 88, 12, 0.1)',
+                            tension: 0.4
+                        }, {
+                            label: 'Output Units',
+                            data: data.map(d => d.output),
+                            borderColor: '#16a34a',
+                            backgroundColor: 'rgba(22, 163, 74, 0.1)',
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Units'
+                                }
+                            }
+                        }
+                    }
                 });
             }
 
-            if (exportDetailsBtn) {
-                exportDetailsBtn.addEventListener('click', function() {
-                    const data = generateExportData('details');
-                    ui.exportToExcel(data, 'wafer-test-details');
+            createYieldTrendChart(data) {
+                const ctx = document.getElementById('yield-trend-chart');
+                if (!ctx || !data) return;
+
+                if (this.charts.yieldTrend) {
+                    this.charts.yieldTrend.destroy();
+                }
+
+                this.charts.yieldTrend = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.map(d => d.runLot),
+                        datasets: [{
+                            label: 'Yield (%)',
+                            data: data.map(d => d.yield),
+                            borderColor: '#16a34a',
+                            backgroundColor: 'rgba(22, 163, 74, 0.2)',
+                            tension: 0.1,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                title: {
+                                    display: true,
+                                    text: 'Yield (%)'
+                                }
+                            }
+                        }
+                    }
                 });
             }
 
-            if (exportComparisonBtn) {
-                exportComparisonBtn.addEventListener('click', function() {
-                    const data = generateExportData('comparison');
-                    ui.exportToExcel(data, 'wafer-test-comparison');
+            createYieldDistributionChart(data) {
+                const ctx = document.getElementById('yield-distribution-chart');
+                if (!ctx || !data) return;
+
+                if (this.charts.yieldDistribution) {
+                    this.charts.yieldDistribution.destroy();
+                }
+
+                // Calculate yield ranges
+                const ranges = { high: 0, medium: 0, low: 0 };
+                data.forEach(d => {
+                    if (d.yield >= 95) ranges.high++;
+                    else if (d.yield >= 85) ranges.medium++;
+                    else ranges.low++;
+                });
+
+                this.charts.yieldDistribution = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['High Yield (≥95%)', 'Medium Yield (85-94%)', 'Low Yield (<85%)'],
+                        datasets: [{
+                            data: [ranges.high, ranges.medium, ranges.low],
+                            backgroundColor: ['#16a34a', '#f59e0b', '#dc2626'],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Count'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
                 });
             }
 
-            // Debug buttons
-            const debugBtn = document.getElementById('debugBtn');
-            const debugDataBtn = document.getElementById('debugDataBtn');
+            updateChartsWithData() {
+                if (parsedData.length === 0) return;
 
-            if (debugBtn) {
-                debugBtn.addEventListener('click', debugSequences);
+                // Aggregate all run lot data
+                const allRunLots = [];
+                parsedData.forEach(data => {
+                    allRunLots.push(...data.runLotData);
+                });
+
+                this.createRunLotDistributionChart(allRunLots.slice(0, 10)); // Top 10 for visibility
+                this.createRunLotTrendChart(allRunLots);
+                this.createYieldTrendChart(allRunLots);
+                this.createYieldDistributionChart(allRunLots);
+            }
+        }
+
+        // Global chart manager
+        let packagingChartManager = null;
+
+        // PDF Report Generation for Packaging
+        async function generatePDFReport() {
+            if (parsedData.length === 0) {
+                alert('No data available. Please upload packaging files first.');
+                return;
             }
 
-            if (debugDataBtn) {
-                debugDataBtn.addEventListener('click', debugParsedData);
+            try {
+                // Show loading indicator
+                const loadingIndicator = document.createElement('div');
+                loadingIndicator.innerHTML = `
+                    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+                        <div style="background: white; padding: 20px; border-radius: 8px; text-align: center;">
+                            <div style="margin-bottom: 15px;">Generating Packaging Report...</div>
+                            <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #ea580c; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                        </div>
+                    </div>
+                    <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+                `;
+                document.body.appendChild(loadingIndicator);
+
+                // Initialize jsPDF
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                let yPosition = 20;
+
+                // Add title
+                pdf.setFontSize(20);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('Packaging Analytics Report', pageWidth / 2, yPosition, { align: 'center' });
+                yPosition += 15;
+
+                // Add generation date
+                pdf.setFontSize(12);
+                pdf.setFont('helvetica', 'normal');
+                pdf.text(`Generated on: ${new Date().toLocaleString()}`, pageWidth / 2, yPosition, { align: 'center' });
+                yPosition += 20;
+
+                // Add summary statistics
+                pdf.setFontSize(16);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('Summary Statistics', 20, yPosition);
+                yPosition += 10;
+
+                const totalRunLots = parsedData.reduce((sum, data) => sum + data.runLotData.length, 0);
+                const totalICs = parsedData.reduce((sum, data) => sum + data.summary.totalICs, 0);
+                const avgYield = parsedData.reduce((sum, data) => {
+                    const dataAvg = data.runLotData.reduce((s, lot) => s + lot.yield, 0) / data.runLotData.length;
+                    return sum + dataAvg;
+                }, 0) / parsedData.length;
+
+                pdf.setFontSize(12);
+                pdf.setFont('helvetica', 'normal');
+                const summaryText = [
+                    `Total Files Analyzed: ${parsedData.length}`,
+                    `Total Run Lots: ${totalRunLots}`,
+                    `Total Mapped ICs: ${totalICs}`,
+                    `Average Yield: ${avgYield.toFixed(2)}%`,
+                    `Report Date: ${new Date().toLocaleDateString()}`
+                ];
+
+                summaryText.forEach(text => {
+                    pdf.text(text, 25, yPosition);
+                    yPosition += 7;
+                });
+
+                yPosition += 10;
+
+                // Add run lot details
+                pdf.setFontSize(16);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('Run Lot Analysis', 20, yPosition);
+                yPosition += 10;
+
+                pdf.setFontSize(10);
+                pdf.setFont('helvetica', 'normal');
+                
+                parsedData.forEach((data, fileIndex) => {
+                    if (yPosition > pageHeight - 40) {
+                        pdf.addPage();
+                        yPosition = 20;
+                    }
+                    
+                    pdf.text(`File ${fileIndex + 1}: ${data.fileName || 'Unknown'}`, 25, yPosition);
+                    yPosition += 6;
+                    
+                    data.runLotData.slice(0, 10).forEach(lot => { // First 10 lots per file
+                        if (yPosition > pageHeight - 20) {
+                            pdf.addPage();
+                            yPosition = 20;
+                        }
+                        
+                        pdf.text(`  ${lot.runLot}: ${lot.input} → ${lot.output} (${lot.yield.toFixed(1)}%)`, 30, yPosition);
+                        yPosition += 4;
+                    });
+                    yPosition += 3;
+                });
+
+                // Add footer
+                const totalPages = pdf.internal.getNumberOfPages();
+                for (let i = 1; i <= totalPages; i++) {
+                    pdf.setPage(i);
+                    pdf.setFontSize(8);
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.text(`Page ${i} of ${totalPages}`, pageWidth - 30, pageHeight - 10);
+                    pdf.text('Generated by Semiconductor Value Chain ERP', 20, pageHeight - 10);
+                }
+
+                // Save the PDF
+                const fileName = `packaging-analysis-${new Date().toISOString().split('T')[0]}.pdf`;
+                pdf.save(fileName);
+
+                // Remove loading indicator
+                document.body.removeChild(loadingIndicator);
+
+                alert('PDF report generated successfully!');
+
+            } catch (error) {
+                console.error('Error generating PDF report:', error);
+                alert('Error generating PDF report. Please try again.');
+                
+                const loadingIndicator = document.querySelector('div[style*="position: fixed"]');
+                if (loadingIndicator) {
+                    document.body.removeChild(loadingIndicator);
+                }
             }
+        }
+
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('=== Initializing Packaging Analytics v5.0 ===');
+            
+            excelParser = new ExcelParser();
+            console.log('✅ Excel Parser initialized successfully');
+
+            // Initialize chart manager
+            packagingChartManager = new PackagingChartManager();
+            console.log('✅ Chart Manager initialized successfully');
+
+            initializeTabSwitching();
+            initializeFileUpload();
+            
+            console.log('✅ Application initialization complete');
         });
+
+
     </script>
 </body>
-</html>f u n c t i o n   g o B a c k ( )   {   w i n d o w . l o c a t i o n . h r e f   =   ' w a f e r   m a p   d a s h b o a r d   v 5 . 0 - i n t e g r a t e d . h t m l ' ;   }  
- 
+</html>

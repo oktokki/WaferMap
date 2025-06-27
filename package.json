@@ -6,6 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "webpack --mode production",
+    "build:css": "node ./node_modules/tailwindcss/lib/cli.js -i ./src/input.css -o ./dist/output.css",
     "dev": "webpack --mode development --watch",
     "chat-manager": "node scripts/chat-manager.js",
     "chat-session": "node scripts/chat-manager.js",
@@ -17,7 +18,13 @@
     "type": "git",
     "url": "git+https://github.com/oktokki/WaferMap.git"
   },
-  "keywords": ["wafer-map", "semiconductor", "quality-control", "dashboard", "chat-session-management"],
+  "keywords": [
+    "wafer-map",
+    "semiconductor",
+    "quality-control",
+    "dashboard",
+    "chat-session-management"
+  ],
   "author": "",
   "license": "ISC",
   "bugs": {
@@ -28,6 +35,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "tailwindcss": "^4.1.10",
     "webpack": "^5.99.9",
     "webpack-cli": "^6.0.1"
   }

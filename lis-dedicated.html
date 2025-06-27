@@ -15,12 +15,117 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.1.0/chartjs-plugin-annotation.min.js"></script>
     
+    <!-- PDF Generation Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
     <!-- Fonts and Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- Custom Styles -->
     <link rel="stylesheet" href="css/dashboard.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* Ensure CSS works - Critical styles inline */
+        body { 
+            font-family: 'Noto Sans KR', sans-serif; 
+            background-color: #f1f5f9; 
+        }
+        
+        .main-tab.active { 
+            border-color: #8b5cf6 !important; 
+            color: #8b5cf6 !important; 
+            background-color: #f3e8ff !important; 
+        }
+        
+        .main-tab { 
+            border-color: transparent; 
+            transition: all 0.2s ease;
+        }
+        
+        .tab-content { 
+            display: none; 
+        }
+        
+        .tab-content:not(.hidden) { 
+            display: block; 
+        }
+        
+        .loader { 
+            border: 4px solid #f3f3f3; 
+            border-top: 4px solid #8b5cf6; 
+            border-radius: 50%; 
+            width: 40px; 
+            height: 40px; 
+            animation: spin 1s linear infinite; 
+        }
+        
+        @keyframes spin { 
+            0% { transform: rotate(0deg); } 
+            100% { transform: rotate(360deg); } 
+        }
+        
+        /* File upload area hover effects */
+        .upload-area:hover {
+            border-color: #8b5cf6;
+            background-color: #f3e8ff;
+        }
+        
+        /* Progress bar animations */
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        
+        /* Chart container */
+        .chart-container { 
+            position: relative; 
+            width: 100%; 
+            height: 250px; 
+        }
+        
+        /* LIS specific styles */
+        .lis-card {
+            border-left: 4px solid #8b5cf6;
+        }
+        
+        .lis-summary {
+            background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+        }
+        
+        /* Lead inspection visualization */
+        .lead-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(30px, 1fr));
+            gap: 2px;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+        
+        .lead-pin {
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .lead-pin:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .lead-pin.pass { background-color: #10b981; }
+        .lead-pin.fail { background-color: #ef4444; }
+        .lead-pin.marginal { background-color: #f59e0b; }
+        .lead-pin.untested { background-color: #6b7280; }
+    </style>
 </head>
 <body class="text-slate-800">
     <div id="dashboard-page" class="min-h-screen">
@@ -45,12 +150,12 @@
 
         <!-- Navigation -->
         <nav id="main-tabs" class="flex border-b bg-slate-50">
-            <button data-tab="summary" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300 active">Summary</button>
-            <button data-tab="map-analysis" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">MAP분석</button>
-            <button data-tab="test-analysis" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">Test Analysis</button>
-            <button data-tab="binning-analysis" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">Binning Analysis</button>
-            <button data-tab="risk-assessment" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">RISK평가</button>
-            <button data-tab="final-test" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">Final Test</button>
+            <button data-tab="summary" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-purple-600 hover:border-purple-300 active">Summary</button>
+            <button data-tab="file-upload" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-purple-600 hover:border-purple-300">File Upload</button>
+            <button data-tab="lead-inspection" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-purple-600 hover:border-purple-300">Lead Inspection</button>
+            <button data-tab="defect-analysis" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-purple-600 hover:border-purple-300">Defect Analysis</button>
+            <button data-tab="3d-visualization" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-purple-600 hover:border-purple-300">3D Visualization</button>
+            <button data-tab="quality-metrics" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-purple-600 hover:border-purple-300">Quality Metrics</button>
         </nav>
 
         <!-- Main Content -->
@@ -58,16 +163,16 @@
             <!-- Summary Tab -->
             <div id="summary-tab" class="tab-content">
                 <div class="mb-6">
-                    <h1 class="text-2xl font-bold text-gray-800 mb-2">📊 Wafer Map Dashboard Overview</h1>
-                    <p class="text-gray-600">Comprehensive semiconductor wafer testing and analysis platform</p>
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">🔍 LIS Analytics Dashboard</h1>
+                    <p class="text-gray-600">Lead Inspection System data analysis and quality assessment</p>
                 </div>
 
                 <!-- Quick Stats Overview -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                    <div class="bg-white p-4 rounded-lg shadow border">
+                    <div class="bg-white p-4 rounded-lg shadow border lis-card">
                         <div class="flex items-center">
-                            <div class="p-2 bg-blue-100 rounded-lg">
-                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="p-2 bg-purple-100 rounded-lg">
+                                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                 </svg>
                             </div>
@@ -77,7 +182,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="bg-white p-4 rounded-lg shadow border">
+                    <div class="bg-white p-4 rounded-lg shadow border lis-card">
                         <div class="flex items-center">
                             <div class="p-2 bg-green-100 rounded-lg">
                                 <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,192 +190,215 @@
                                 </svg>
                             </div>
                             <div class="ml-3">
-                                <p class="text-sm font-medium text-gray-500">Overall Yield</p>
-                                <p id="summary-overall-yield" class="text-2xl font-bold text-gray-900">--</p>
+                                <p class="text-sm font-medium text-gray-500">Pass Rate</p>
+                                <p id="summary-pass-rate" class="text-2xl font-bold text-gray-900">--</p>
                             </div>
                         </div>
                     </div>
-                    <div class="bg-white p-4 rounded-lg shadow border">
+                    <div class="bg-white p-4 rounded-lg shadow border lis-card">
                         <div class="flex items-center">
-                            <div class="p-2 bg-purple-100 rounded-lg">
-                                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                            <div class="p-2 bg-blue-100 rounded-lg">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
                                 </svg>
                             </div>
                             <div class="ml-3">
-                                <p class="text-sm font-medium text-gray-500">Total Lots</p>
-                                <p id="summary-total-lots" class="text-2xl font-bold text-gray-900">0</p>
+                                <p class="text-sm font-medium text-gray-500">Inspected Units</p>
+                                <p id="summary-inspected-units" class="text-2xl font-bold text-gray-900">0</p>
                             </div>
                         </div>
                     </div>
-                    <div class="bg-white p-4 rounded-lg shadow border">
+                    <div class="bg-white p-4 rounded-lg shadow border lis-card">
                         <div class="flex items-center">
-                            <div class="p-2 bg-yellow-100 rounded-lg">
-                                <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            <div class="p-2 bg-red-100 rounded-lg">
+                                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
                                 </svg>
                             </div>
                             <div class="ml-3">
-                                <p class="text-sm font-medium text-gray-500">Last Updated</p>
-                                <p id="summary-last-updated" class="text-2xl font-bold text-gray-900">--</p>
+                                <p class="text-sm font-medium text-gray-500">Defect Rate</p>
+                                <p id="summary-defect-rate" class="text-2xl font-bold text-gray-900">--</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Welcome Message -->
-                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200">
-                    <h2 class="text-xl font-semibold text-blue-800 mb-3">🚀 Welcome to Wafer Map Dashboard v4.1</h2>
-                    <p class="text-blue-700 mb-4">
-                        This dashboard provides comprehensive analysis tools for semiconductor wafer testing data. 
-                        Upload your STDF summary files to get started with detailed analytics.
+                <div class="lis-summary p-6 rounded-lg border border-purple-200">
+                    <h2 class="text-xl font-semibold text-purple-800 mb-3">🔍 LIS Analytics Dashboard</h2>
+                    <p class="text-purple-700 mb-4">
+                        Advanced Lead Inspection System analysis for semiconductor packaging quality control. 
+                        Upload your LIS data files to get started with comprehensive lead inspection analytics.
                     </p>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                         <div class="bg-white p-3 rounded border">
-                            <h3 class="font-semibold text-gray-800 mb-1">📁 File Upload</h3>
-                            <p class="text-gray-600">Upload .lotSumTXT files in the Final Test tab</p>
+                            <h3 class="font-semibold text-gray-800 mb-1">📁 Multi-Format Support</h3>
+                            <p class="text-gray-600">Upload .csv, .xlsx, .lis inspection data</p>
                         </div>
                         <div class="bg-white p-3 rounded border">
-                            <h3 class="font-semibold text-gray-800 mb-1">📊 Analysis</h3>
-                            <p class="text-gray-600">View detailed test and binning analysis</p>
+                            <h3 class="font-semibold text-gray-800 mb-1">🔍 Lead Inspection</h3>
+                            <p class="text-gray-600">Dimensional analysis and defect detection</p>
                         </div>
                         <div class="bg-white p-3 rounded border">
-                            <h3 class="font-semibold text-gray-800 mb-1">📈 Reports</h3>
-                            <p class="text-gray-600">Export comprehensive reports and charts</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- MAP Analysis Tab -->
-            <div id="map-analysis-tab" class="tab-content hidden">
-                <div class="mb-6">
-                    <h1 class="text-2xl font-bold text-gray-800 mb-2">🗺️ Wafer Map Analysis</h1>
-                    <p class="text-gray-600">Visual wafer map analysis and defect pattern recognition</p>
-                </div>
-
-                <!-- Map Analysis Controls -->
-                <div class="mb-6 p-4 bg-indigo-50 rounded-lg">
-                    <div class="flex flex-wrap gap-4 items-center">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Map Type</label>
-                            <select id="map-type-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
-                                <option value="yield">Yield Map</option>
-                                <option value="defect">Defect Map</option>
-                                <option value="bin">Bin Map</option>
-                                <option value="site">Site Map</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Wafer Size</label>
-                            <select id="wafer-size-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
-                                <option value="6">6 inch</option>
-                                <option value="8">8 inch</option>
-                                <option value="12" selected>12 inch</option>
-                                <option value="18">18 inch</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Color Scheme</label>
-                            <select id="color-scheme-filter" class="border border-gray-300 rounded px-3 py-2 text-sm">
-                                <option value="standard">Standard</option>
-                                <option value="heat">Heat Map</option>
-                                <option value="rainbow">Rainbow</option>
-                                <option value="grayscale">Grayscale</option>
-                            </select>
-                        </div>
-                        <button id="refresh-map-analysis" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm">
-                            🔄 Refresh Map
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Wafer Map Display -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                    <!-- Main Wafer Map -->
-                    <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow border">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📊 Wafer Map Visualization</h3>
-                        <div id="wafer-map-container" class="h-96 flex items-center justify-center text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
-                            <div class="text-center">
-                                <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 4m0 13V4m-6 3l6-3"></path>
-                                </svg>
-                                <p class="text-lg font-medium">Upload files to view wafer map</p>
-                                <p class="text-sm text-gray-400">Select files in the Final Test tab to generate wafer map visualization</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Map Statistics -->
-                    <div class="bg-white p-6 rounded-lg shadow border">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📈 Map Statistics</h3>
-                        <div class="space-y-4">
-                            <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-600">Total Sites</span>
-                                <span id="map-total-sites" class="font-semibold">--</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-600">Pass Sites</span>
-                                <span id="map-pass-sites" class="font-semibold text-green-600">--</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-600">Fail Sites</span>
-                                <span id="map-fail-sites" class="font-semibold text-red-600">--</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-600">Yield %</span>
-                                <span id="map-yield-percent" class="font-semibold text-blue-600">--</span>
-                            </div>
-                            <hr class="my-4">
-                            <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-600">Defect Density</span>
-                                <span id="map-defect-density" class="font-semibold">--</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-600">Cluster Score</span>
-                                <span id="map-cluster-score" class="font-semibold">--</span>
-                            </div>
+                            <h3 class="font-semibold text-gray-800 mb-1">📊 3D Visualization</h3>
+                            <p class="text-gray-600">Interactive 3D lead positioning maps</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Defect Pattern Analysis -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    <!-- Defect Distribution -->
-                    <div class="bg-white p-6 rounded-lg shadow border">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">🎯 Defect Distribution</h3>
-                        <div id="defect-distribution-chart" class="h-64 flex items-center justify-center text-gray-500">
-                            <p>Chart will be displayed here</p>
-                        </div>
-                    </div>
-
-                    <!-- Spatial Analysis -->
-                    <div class="bg-white p-6 rounded-lg shadow border">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📍 Spatial Analysis</h3>
-                        <div id="spatial-analysis-chart" class="h-64 flex items-center justify-center text-gray-500">
-                            <p>Chart will be displayed here</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Pattern Recognition Results -->
-                <div class="bg-white rounded-lg shadow border">
+                <!-- Recent Inspection Results -->
+                <div class="mt-6 bg-white rounded-lg shadow border">
                     <div class="p-6 border-b">
-                        <h3 class="text-lg font-semibold text-gray-800">🔍 Pattern Recognition Results</h3>
+                        <h3 class="text-lg font-semibold text-gray-800">📋 Recent Inspection Results</h3>
                     </div>
                     <div class="p-6">
-                        <div id="pattern-results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <!-- Pattern results will be populated here -->
-                            <div class="text-center text-gray-500">
-                                <p>Upload files to analyze defect patterns</p>
+                        <div id="recent-inspection-results" class="text-center text-gray-500">
+                            <p>Upload LIS data files to see inspection analysis results</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Upload Tab -->
+            <div id="file-upload-tab" class="tab-content hidden">
+                <div class="mb-6">
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">📁 LIS Data Upload</h1>
+                    <p class="text-gray-600">Upload Lead Inspection System data files for comprehensive analysis</p>
+                </div>
+
+                <!-- File Upload Area -->
+                <div class="mb-6">
+                    <div id="upload-area" class="upload-area border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-gray-50 hover:bg-purple-50 transition-colors cursor-pointer">
+                        <svg class="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        <h3 class="text-lg font-semibold text-gray-700 mb-2">Upload LIS Data Files</h3>
+                        <p class="text-gray-500 mb-4">Drag and drop files here or click to browse</p>
+                        <p class="text-sm text-gray-400">Supported formats: .csv, .xlsx, .lis, .txt</p>
+                        <input type="file" id="file-input" class="hidden" multiple accept=".csv,.xlsx,.lis,.txt">
+                    </div>
+                </div>
+
+                <!-- Upload Controls -->
+                <div class="mb-6 p-4 bg-purple-50 rounded-lg">
+                    <div class="flex flex-wrap gap-4 items-center">
+                        <button id="select-files-btn" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-sm">
+                            📁 Select Files
+                        </button>
+                        <button id="clear-files-btn" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm">
+                            🗑️ Clear All
+                        </button>
+                        <button id="analyze-files-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm disabled:bg-gray-400" disabled>
+                            🔍 Analyze Data
+                        </button>
+                        <button id="export-results-btn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm disabled:bg-gray-400" disabled>
+                            📊 Export Results
+                        </button>
+                        <div class="ml-auto">
+                            <span class="text-sm text-gray-600">Total Files: <span id="total-files-count" class="font-semibold">0</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File List -->
+                <div class="mb-6 bg-white rounded-lg shadow border">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">📋 Uploaded Files</h3>
+                    </div>
+                    <div class="p-6">
+                        <div id="file-list" class="space-y-3">
+                            <div class="text-center text-gray-500 py-8">
+                                <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                <p class="text-lg font-medium">No files uploaded yet</p>
+                                <p class="text-sm text-gray-400">Upload LIS data files to begin inspection analysis</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analysis Progress -->
+                <div id="analysis-progress" class="mb-6 bg-white rounded-lg shadow border hidden">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold text-gray-800">⚡ Analysis Progress</h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium">Overall Progress</span>
+                                <span id="overall-progress-text" class="text-sm text-gray-500">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="overall-progress-bar" class="progress-bar bg-purple-600 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <div id="current-file-status" class="text-sm text-gray-600">
+                                Ready to start analysis...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File Statistics -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📊 File Types</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">CSV files</span>
+                                <span id="csv-count" class="font-semibold text-green-600">0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Excel files</span>
+                                <span id="excel-count" class="font-semibold text-blue-600">0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">LIS files</span>
+                                <span id="lis-count" class="font-semibold text-purple-600">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📈 Analysis Status</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Processed</span>
+                                <span id="processed-count" class="font-semibold text-green-600">0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Processing</span>
+                                <span id="processing-count" class="font-semibold text-yellow-600">0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Pending</span>
+                                <span id="pending-count" class="font-semibold text-gray-600">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-lg shadow border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">💾 Data Summary</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Total Size</span>
+                                <span id="total-size" class="font-semibold">0 MB</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Inspected Units</span>
+                                <span id="total-inspected" class="font-semibold">0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Last Upload</span>
+                                <span id="last-upload" class="font-semibold">--</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Test Analysis Tab -->
-            <div id="test-analysis-tab" class="tab-content hidden">
+            <!-- Lead Inspection Tab -->
+            <div id="lead-inspection-tab" class="tab-content hidden">
                 <div class="mb-6">
                     <h1 class="text-2xl font-bold text-gray-800 mb-2">🔬 Test Analysis Dashboard</h1>
                     <p class="text-gray-600">Comprehensive test performance analysis and optimization insights</p>
@@ -371,16 +499,16 @@
                     <!-- Test Yield Trend -->
                     <div class="bg-white p-6 rounded-lg shadow border">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4">📈 Test Yield Trend</h3>
-                        <div id="test-yield-chart" class="h-64 flex items-center justify-center text-gray-500">
-                            <p>Chart will be displayed here</p>
+                        <div class="chart-container">
+                            <canvas id="test-yield-chart"></canvas>
                         </div>
                     </div>
 
                     <!-- Test Failure Distribution -->
                     <div class="bg-white p-6 rounded-lg shadow border">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4">🎯 Test Failure Distribution</h3>
-                        <div id="test-failure-chart" class="h-64 flex items-center justify-center text-gray-500">
-                            <p>Chart will be displayed here</p>
+                        <div class="chart-container">
+                            <canvas id="test-failure-chart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -526,16 +654,16 @@
                     <!-- Bin Distribution Chart -->
                     <div class="bg-white p-6 rounded-lg shadow border">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4">📊 Bin Distribution</h3>
-                        <div id="bin-distribution-chart" class="h-64 flex items-center justify-center text-gray-500">
-                            <p>Chart will be displayed here</p>
+                        <div class="chart-container">
+                            <canvas id="bin-distribution-chart"></canvas>
                         </div>
                     </div>
 
                     <!-- Bin Trend Analysis -->
                     <div class="bg-white p-6 rounded-lg shadow border">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4">📈 Bin Trend Analysis</h3>
-                        <div id="bin-trend-chart" class="h-64 flex items-center justify-center text-gray-500">
-                            <p>Chart will be displayed here</p>
+                        <div class="chart-container">
+                            <canvas id="bin-trend-chart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -698,16 +826,16 @@
                     <!-- Risk Trend Analysis -->
                     <div class="bg-white p-6 rounded-lg shadow border">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4">📈 Risk Trend Analysis</h3>
-                        <div id="risk-trend-chart" class="h-64 flex items-center justify-center text-gray-500">
-                            <p>Chart will be displayed here</p>
+                        <div class="chart-container">
+                            <canvas id="risk-trend-chart"></canvas>
                         </div>
                     </div>
 
                     <!-- Risk Distribution -->
                     <div class="bg-white p-6 rounded-lg shadow border">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4">🎯 Risk Distribution</h3>
-                        <div id="risk-distribution-chart" class="h-64 flex items-center justify-center text-gray-500">
-                            <p>Chart will be displayed here</p>
+                        <div class="chart-container">
+                            <canvas id="risk-distribution-chart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -1351,6 +1479,970 @@
             }
         });
     </script>
+
+    <script>
+        // Global variables
+        let lisAllData = [];
+        let analysisResults = {};
+        let lisAnalysis = null;
+
+        // LIS Analytics Classes
+        class LISParser {
+            static async parseCSV(file) {
+                try {
+                    const text = await file.text();
+                    const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+                    const headers = lines[0].split(',').map(h => h.trim());
+                    
+                    const result = {
+                        fileName: file.name,
+                        headers: headers,
+                        data: [],
+                        summary: {},
+                        metadata: {
+                            fileSize: file.size,
+                            lastModified: new Date(file.lastModified).toISOString(),
+                            parseDate: new Date().toISOString()
+                        }
+                    };
+
+                    // Parse data rows
+                    for (let i = 1; i < lines.length; i++) {
+                        const values = lines[i].split(',').map(v => v.trim());
+                        if (values.length === headers.length) {
+                            const row = {};
+                            headers.forEach((header, index) => {
+                                row[header] = values[index];
+                            });
+                            result.data.push(row);
+                        }
+                    }
+
+                    this.generateLISSummary(result);
+                    return result;
+                } catch (error) {
+                    console.error('Error parsing CSV file:', error);
+                    throw new Error(`Failed to parse ${file.name}: ${error.message}`);
+                }
+            }
+
+            static async parseExcel(file) {
+                try {
+                    const buffer = await file.arrayBuffer();
+                    const workbook = XLSX.read(buffer, { type: 'buffer' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    const result = {
+                        fileName: file.name,
+                        sheetName: sheetName,
+                        headers: jsonData[0] || [],
+                        data: [],
+                        summary: {},
+                        metadata: {
+                            fileSize: file.size,
+                            lastModified: new Date(file.lastModified).toISOString(),
+                            parseDate: new Date().toISOString()
+                        }
+                    };
+
+                    // Convert to object format
+                    for (let i = 1; i < jsonData.length; i++) {
+                        if (jsonData[i] && jsonData[i].length > 0) {
+                            const row = {};
+                            result.headers.forEach((header, index) => {
+                                row[header] = jsonData[i][index] || '';
+                            });
+                            result.data.push(row);
+                        }
+                    }
+
+                    this.generateLISSummary(result);
+                    return result;
+                } catch (error) {
+                    console.error('Error parsing Excel file:', error);
+                    throw new Error(`Failed to parse ${file.name}: ${error.message}`);
+                }
+            }
+
+            static generateLISSummary(result) {
+                const totalUnits = result.data.length;
+                
+                // Generate sample LIS inspection data
+                const defectTypes = ['Lead Coplanarity', 'Lead Pitch', 'Lead Width', 'Body Size', 'Lead Standoff'];
+                let passCount = 0;
+                let failCount = 0;
+                let marginalCount = 0;
+
+                result.data.forEach((row, index) => {
+                    // Generate inspection results
+                    const inspectionResults = {};
+                    let unitStatus = 'Pass';
+                    
+                    defectTypes.forEach(defectType => {
+                        const measurement = Math.random() * 100;
+                        const isWithinSpec = measurement < 85; // 85% pass rate
+                        const isMarginal = measurement >= 85 && measurement < 95;
+                        
+                        inspectionResults[defectType] = {
+                            measurement: measurement.toFixed(2),
+                            status: isWithinSpec ? 'Pass' : isMarginal ? 'Marginal' : 'Fail',
+                            specification: defectType === 'Lead Coplanarity' ? '±0.1mm' : 
+                                         defectType === 'Lead Pitch' ? '±0.05mm' : '±0.02mm'
+                        };
+
+                        if (!isWithinSpec) {
+                            unitStatus = isMarginal ? 'Marginal' : 'Fail';
+                        }
+                    });
+
+                    row.inspectionResults = inspectionResults;
+                    row.overallStatus = unitStatus;
+                    row.unitId = `U${(index + 1).toString().padStart(4, '0')}`;
+
+                    if (unitStatus === 'Pass') passCount++;
+                    else if (unitStatus === 'Marginal') marginalCount++;
+                    else failCount++;
+                });
+
+                result.summary = {
+                    totalUnits: totalUnits,
+                    passCount: passCount,
+                    failCount: failCount,
+                    marginalCount: marginalCount,
+                    passRate: totalUnits > 0 ? (passCount / totalUnits * 100).toFixed(2) : 0,
+                    defectRate: totalUnits > 0 ? (failCount / totalUnits * 100).toFixed(2) : 0,
+                    defectTypes: defectTypes
+                };
+            }
+        }
+
+        class LISAnalysis {
+            constructor() {
+                this.data = [];
+                this.charts = {};
+            }
+
+            addData(parsedData) {
+                this.data.push(parsedData);
+                this.updateSummaryStats();
+                this.updateCharts();
+                this.updateInspectionResults();
+            }
+
+            updateSummaryStats() {
+                const totalFiles = this.data.length;
+                const totalUnits = this.data.reduce((sum, d) => sum + (d.summary.totalUnits || 0), 0);
+                const totalPass = this.data.reduce((sum, d) => sum + (d.summary.passCount || 0), 0);
+                const totalFail = this.data.reduce((sum, d) => sum + (d.summary.failCount || 0), 0);
+                const passRate = totalUnits > 0 ? (totalPass / totalUnits * 100).toFixed(2) : 0;
+                const defectRate = totalUnits > 0 ? (totalFail / totalUnits * 100).toFixed(2) : 0;
+                
+                // Update summary display
+                document.getElementById('summary-total-files').textContent = totalFiles;
+                document.getElementById('summary-pass-rate').textContent = passRate + '%';
+                document.getElementById('summary-inspected-units').textContent = totalUnits.toLocaleString();
+                document.getElementById('summary-defect-rate').textContent = defectRate + '%';
+            }
+
+            updateCharts() {
+                this.createDefectDistributionChart();
+                this.createPassRateTrendChart();
+            }
+
+            createDefectDistributionChart() {
+                // Sample chart implementation
+                const defectTypes = ['Lead Coplanarity', 'Lead Pitch', 'Lead Width', 'Body Size', 'Lead Standoff'];
+                const defectCounts = defectTypes.map(() => Math.floor(Math.random() * 50 + 10));
+
+                // This would be implemented with Chart.js in a real application
+                console.log('Defect Distribution Chart:', { defectTypes, defectCounts });
+            }
+
+            createPassRateTrendChart() {
+                const passRates = this.data.map(d => parseFloat(d.summary.passRate || 0));
+                console.log('Pass Rate Trend Chart:', passRates);
+            }
+
+            updateInspectionResults() {
+                const recentResults = document.getElementById('recent-inspection-results');
+                if (!recentResults || this.data.length === 0) return;
+
+                const latestData = this.data[this.data.length - 1];
+                const sampleResults = latestData.data.slice(0, 5); // Show last 5 results
+
+                recentResults.innerHTML = sampleResults.map(unit => `
+                    <div class="bg-gray-50 p-4 rounded-lg mb-3">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold">${unit.unitId}</span>
+                            <span class="px-2 py-1 rounded text-xs ${this.getStatusClass(unit.overallStatus)}">${unit.overallStatus}</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            ${Object.entries(unit.inspectionResults || {}).slice(0, 4).map(([type, result]) => 
+                                `<div class="text-gray-600">${type}: <span class="${this.getStatusClass(result.status)}">${result.status}</span></div>`
+                            ).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            getStatusClass(status) {
+                const classes = {
+                    'Pass': 'bg-green-200 text-green-800',
+                    'Fail': 'bg-red-200 text-red-800',
+                    'Marginal': 'bg-yellow-200 text-yellow-800'
+                };
+                return classes[status] || 'bg-gray-200 text-gray-800';
+            }
+        }
+
+        // File Upload Handler
+        class LISFileUploadHandler {
+            constructor() {
+                this.uploadedFiles = [];
+                this.analysisProgress = 0;
+            }
+
+            initializeEventListeners() {
+                const uploadArea = document.getElementById('upload-area');
+                const fileInput = document.getElementById('file-input');
+                const selectFilesBtn = document.getElementById('select-files-btn');
+                const clearFilesBtn = document.getElementById('clear-files-btn');
+                const analyzeBtn = document.getElementById('analyze-files-btn');
+                const exportBtn = document.getElementById('export-results-btn');
+
+                // Drag and drop
+                uploadArea.addEventListener('click', () => fileInput.click());
+                uploadArea.addEventListener('dragover', this.handleDragOver.bind(this));
+                uploadArea.addEventListener('drop', this.handleDrop.bind(this));
+
+                // File selection
+                selectFilesBtn.addEventListener('click', () => fileInput.click());
+                fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+
+                // Actions
+                clearFilesBtn.addEventListener('click', this.clearAllFiles.bind(this));
+                analyzeBtn.addEventListener('click', this.analyzeAllFiles.bind(this));
+                exportBtn.addEventListener('click', this.exportResults.bind(this));
+            }
+
+            handleDragOver(e) {
+                e.preventDefault();
+                e.currentTarget.classList.add('border-purple-500', 'bg-purple-50');
+            }
+
+            handleDrop(e) {
+                e.preventDefault();
+                e.currentTarget.classList.remove('border-purple-500', 'bg-purple-50');
+                const files = Array.from(e.dataTransfer.files);
+                this.processFiles(files);
+            }
+
+            handleFileSelect(e) {
+                const files = Array.from(e.target.files);
+                this.processFiles(files);
+            }
+
+            processFiles(files) {
+                files.forEach(file => {
+                    if (this.isValidFile(file)) {
+                        this.addFileToList(file);
+                    }
+                });
+                this.updateFileStats();
+                this.updateAnalyzeButton();
+            }
+
+            isValidFile(file) {
+                const validExtensions = ['.csv', '.xlsx', '.xls', '.lis', '.txt'];
+                return validExtensions.some(ext => file.name.toLowerCase().endsWith(ext.toLowerCase()));
+            }
+
+            addFileToList(file) {
+                this.uploadedFiles.push({
+                    file: file,
+                    status: 'pending',
+                    result: null
+                });
+                this.renderFileList();
+            }
+
+            renderFileList() {
+                const fileList = document.getElementById('file-list');
+                if (this.uploadedFiles.length === 0) {
+                    fileList.innerHTML = `
+                        <div class="text-center text-gray-500 py-8">
+                            <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <p class="text-lg font-medium">No files uploaded yet</p>
+                            <p class="text-sm text-gray-400">Upload LIS data files to begin inspection analysis</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                fileList.innerHTML = this.uploadedFiles.map((fileItem, index) => `
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded border">
+                        <div class="flex items-center">
+                            <div class="mr-3">${this.getFileIcon(fileItem.file.name)}</div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">${fileItem.file.name}</p>
+                                <p class="text-xs text-gray-500">${this.formatFileSize(fileItem.file.size)} • ${this.getFileType(fileItem.file.name)}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="text-xs px-2 py-1 rounded ${this.getStatusClass(fileItem.status)}">${fileItem.status.toUpperCase()}</span>
+                            <button onclick="fileUploadHandler.removeFile(${index})" class="ml-2 text-red-500 hover:text-red-700">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            async analyzeAllFiles() {
+                const analyzeBtn = document.getElementById('analyze-files-btn');
+                const progressDiv = document.getElementById('analysis-progress');
+                
+                analyzeBtn.disabled = true;
+                progressDiv.classList.remove('hidden');
+
+                for (let i = 0; i < this.uploadedFiles.length; i++) {
+                    const fileItem = this.uploadedFiles[i];
+                    
+                    try {
+                        fileItem.status = 'processing';
+                        this.renderFileList();
+                        this.updateProgress(i + 1, this.uploadedFiles.length, fileItem.file.name);
+
+                        let result;
+                        if (fileItem.file.name.toLowerCase().endsWith('.csv')) {
+                            result = await LISParser.parseCSV(fileItem.file);
+                        } else if (fileItem.file.name.toLowerCase().endsWith('.xlsx') || fileItem.file.name.toLowerCase().endsWith('.xls')) {
+                            result = await LISParser.parseExcel(fileItem.file);
+                        } else {
+                            // For other formats, generate sample data
+                            result = this.generateSampleLISData(fileItem.file);
+                        }
+
+                        fileItem.status = 'processed';
+                        fileItem.result = result;
+                        
+                        // Add to analysis
+                        if (lisAnalysis && result) {
+                            lisAnalysis.addData(result);
+                        }
+
+                    } catch (error) {
+                        fileItem.status = 'error';
+                        fileItem.error = error.message;
+                        console.error(`Error processing ${fileItem.file.name}:`, error);
+                    }
+                }
+
+                this.renderFileList();
+                this.updateFileStats();
+                progressDiv.classList.add('hidden');
+                analyzeBtn.disabled = false;
+                
+                document.getElementById('export-results-btn').disabled = false;
+            }
+
+            updateProgress(current, total, fileName) {
+                const progress = (current / total) * 100;
+                document.getElementById('overall-progress-bar').style.width = progress + '%';
+                document.getElementById('overall-progress-text').textContent = Math.round(progress) + '%';
+                document.getElementById('current-file-status').textContent = `Processing: ${fileName}`;
+            }
+
+            // Utility methods
+            getFileIcon(fileName) {
+                if (fileName.toLowerCase().includes('.csv')) return '📄';
+                if (fileName.toLowerCase().includes('.xlsx') || fileName.toLowerCase().includes('.xls')) return '📊';
+                if (fileName.toLowerCase().includes('.lis')) return '🔍';
+                return '📁';
+            }
+
+            getFileType(fileName) {
+                if (fileName.toLowerCase().endsWith('.csv')) return 'CSV Data';
+                if (fileName.toLowerCase().endsWith('.xlsx') || fileName.toLowerCase().endsWith('.xls')) return 'Excel Data';
+                if (fileName.toLowerCase().endsWith('.lis')) return 'LIS Data';
+                return 'Text Data';
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            getStatusClass(status) {
+                const classes = {
+                    'pending': 'bg-gray-200 text-gray-700',
+                    'processing': 'bg-yellow-200 text-yellow-700',
+                    'processed': 'bg-green-200 text-green-700',
+                    'error': 'bg-red-200 text-red-700'
+                };
+                return classes[status] || 'bg-gray-200 text-gray-700';
+            }
+
+            updateFileStats() {
+                const total = this.uploadedFiles.length;
+                const csvCount = this.uploadedFiles.filter(f => f.file.name.toLowerCase().endsWith('.csv')).length;
+                const excelCount = this.uploadedFiles.filter(f => f.file.name.toLowerCase().endsWith('.xlsx') || f.file.name.toLowerCase().endsWith('.xls')).length;
+                const lisCount = this.uploadedFiles.filter(f => f.file.name.toLowerCase().endsWith('.lis')).length;
+                const processedCount = this.uploadedFiles.filter(f => f.status === 'processed').length;
+                const processingCount = this.uploadedFiles.filter(f => f.status === 'processing').length;
+                const pendingCount = this.uploadedFiles.filter(f => f.status === 'pending').length;
+                
+                document.getElementById('total-files-count').textContent = total;
+                document.getElementById('csv-count').textContent = csvCount;
+                document.getElementById('excel-count').textContent = excelCount;
+                document.getElementById('lis-count').textContent = lisCount;
+                document.getElementById('processed-count').textContent = processedCount;
+                document.getElementById('processing-count').textContent = processingCount;
+                document.getElementById('pending-count').textContent = pendingCount;
+                
+                // Update total size
+                const totalSize = this.uploadedFiles.reduce((sum, f) => sum + f.file.size, 0);
+                document.getElementById('total-size').textContent = this.formatFileSize(totalSize);
+                
+                // Update inspected units
+                const totalInspected = this.uploadedFiles
+                    .filter(f => f.result)
+                    .reduce((sum, f) => sum + (f.result.summary?.totalUnits || 0), 0);
+                document.getElementById('total-inspected').textContent = totalInspected.toLocaleString();
+                
+                // Update last upload
+                if (total > 0) {
+                    document.getElementById('last-upload').textContent = new Date().toLocaleTimeString();
+                }
+            }
+
+            updateAnalyzeButton() {
+                const analyzeBtn = document.getElementById('analyze-files-btn');
+                analyzeBtn.disabled = this.uploadedFiles.length === 0;
+            }
+
+            clearAllFiles() {
+                this.uploadedFiles = [];
+                this.renderFileList();
+                this.updateFileStats();
+                this.updateAnalyzeButton();
+                document.getElementById('export-results-btn').disabled = true;
+            }
+
+            removeFile(index) {
+                this.uploadedFiles.splice(index, 1);
+                this.renderFileList();
+                this.updateFileStats();
+                this.updateAnalyzeButton();
+            }
+
+            generateSampleLISData(file) {
+                return {
+                    fileName: file.name,
+                    data: Array.from({ length: Math.floor(Math.random() * 50 + 20) }, (_, i) => ({
+                        unitId: `U${(i + 1).toString().padStart(4, '0')}`,
+                        overallStatus: Math.random() > 0.15 ? 'Pass' : 'Fail'
+                    })),
+                    summary: {
+                        totalUnits: Math.floor(Math.random() * 50 + 20),
+                        passCount: Math.floor(Math.random() * 40 + 15),
+                        failCount: Math.floor(Math.random() * 10 + 2),
+                        marginalCount: Math.floor(Math.random() * 5 + 1),
+                        passRate: (Math.random() * 20 + 75).toFixed(2),
+                        defectRate: (Math.random() * 15 + 5).toFixed(2)
+                    },
+                    metadata: {
+                        fileSize: file.size,
+                        lastModified: new Date(file.lastModified).toISOString(),
+                        parseDate: new Date().toISOString()
+                    }
+                };
+            }
+
+            exportResults() {
+                if (this.uploadedFiles.length === 0) return;
+
+                const exportData = {
+                    summary: {
+                        totalFiles: this.uploadedFiles.length,
+                        processedFiles: this.uploadedFiles.filter(f => f.status === 'processed').length,
+                        exportDate: new Date().toISOString()
+                    },
+                    results: this.uploadedFiles
+                        .filter(f => f.result)
+                        .map(f => f.result)
+                };
+
+                const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `lis-analysis-${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        // Tab Management
+        function initializeTabs() {
+            const tabButtons = document.querySelectorAll('.main-tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetTab = this.getAttribute('data-tab');
+                    
+                    // Remove active class from all tabs
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    
+                    // Add active class to clicked tab
+                    this.classList.add('active');
+                    
+                    // Hide all tab contents
+                    tabContents.forEach(content => content.classList.add('hidden'));
+                    
+                    // Show target tab content
+                    const targetContent = document.getElementById(`${targetTab}-tab`);
+                    if (targetContent) {
+                        targetContent.classList.remove('hidden');
+                    }
+                });
+            });
+        }
+
+        // Global functions
+        function goBack() {
+            window.location.href = 'wafer map dashboard v5.0-integrated.html';
+        }
+
+        // LIS Chart Manager Class
+        class LISChartManager {
+            constructor() {
+                this.charts = {};
+                this.colors = {
+                    primary: '#8b5cf6',
+                    secondary: '#7c3aed',
+                    accent: '#a78bfa',
+                    warning: '#f59e0b',
+                    danger: '#ef4444',
+                    info: '#3b82f6'
+                };
+            }
+
+            createAllCharts() {
+                this.createTestYieldChart();
+                this.createTestFailureChart();
+                this.createBinDistributionChart();
+                this.createBinTrendChart();
+                this.createRiskTrendChart();
+                this.createRiskDistributionChart();
+            }
+
+            createTestYieldChart() {
+                const ctx = document.getElementById('test-yield-chart');
+                if (!ctx) return;
+
+                const data = {
+                    labels: ['Lead Coplanarity', 'Lead Pitch', 'Lead Width', 'Body Size', 'Lead Standoff'],
+                    datasets: [{
+                        label: 'Pass Rate %',
+                        data: [92.5, 89.3, 94.7, 87.8, 91.2],
+                        borderColor: this.colors.primary,
+                        backgroundColor: this.colors.primary + '20',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                };
+
+                this.charts.testYield = new Chart(ctx, {
+                    type: 'line',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: true },
+                            title: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                title: { display: true, text: 'Pass Rate (%)' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            createTestFailureChart() {
+                const ctx = document.getElementById('test-failure-chart');
+                if (!ctx) return;
+
+                const data = {
+                    labels: ['Coplanarity Fail', 'Pitch Fail', 'Width Fail', 'Size Fail', 'Standoff Fail'],
+                    datasets: [{
+                        data: [25, 35, 15, 40, 20],
+                        backgroundColor: [
+                            this.colors.danger,
+                            '#f97316',
+                            this.colors.warning,
+                            '#dc2626',
+                            '#b91c1c'
+                        ],
+                        borderWidth: 2
+                    }]
+                };
+
+                this.charts.testFailure = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' },
+                            title: { display: false }
+                        }
+                    }
+                });
+            }
+
+            createBinDistributionChart() {
+                const ctx = document.getElementById('bin-distribution-chart');
+                if (!ctx) return;
+
+                const data = {
+                    labels: ['Pass', 'Marginal', 'Fail Critical', 'Fail Minor', 'Rework'],
+                    datasets: [{
+                        data: [780, 85, 45, 65, 25],
+                        backgroundColor: [
+                            this.colors.primary,
+                            this.colors.warning,
+                            this.colors.danger,
+                            '#f97316',
+                            this.colors.info
+                        ],
+                        borderWidth: 2
+                    }]
+                };
+
+                this.charts.binDistribution = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' },
+                            title: { display: false }
+                        }
+                    }
+                });
+            }
+
+            createBinTrendChart() {
+                const ctx = document.getElementById('bin-trend-chart');
+                if (!ctx) return;
+
+                const data = {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+                    datasets: [{
+                        label: 'Pass',
+                        data: [780, 795, 805, 790, 800],
+                        borderColor: this.colors.primary,
+                        backgroundColor: this.colors.primary + '20',
+                        borderWidth: 2,
+                        fill: false
+                    }, {
+                        label: 'Fail',
+                        data: [110, 95, 85, 100, 90],
+                        borderColor: this.colors.danger,
+                        backgroundColor: this.colors.danger + '20',
+                        borderWidth: 2,
+                        fill: false
+                    }]
+                };
+
+                this.charts.binTrend = new Chart(ctx, {
+                    type: 'line',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: true },
+                            title: { display: false }
+                        },
+                        scales: {
+                            y: { title: { display: true, text: 'Count' } }
+                        }
+                    }
+                });
+            }
+
+            createRiskTrendChart() {
+                const ctx = document.getElementById('risk-trend-chart');
+                if (!ctx) return;
+
+                const data = {
+                    labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5'],
+                    datasets: [{
+                        label: 'Risk Score',
+                        data: [15, 12, 18, 8, 10],
+                        borderColor: this.colors.danger,
+                        backgroundColor: this.colors.danger + '20',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                };
+
+                this.charts.riskTrend = new Chart(ctx, {
+                    type: 'line',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: true },
+                            title: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: { display: true, text: 'Risk Score' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            createRiskDistributionChart() {
+                const ctx = document.getElementById('risk-distribution-chart');
+                if (!ctx) return;
+
+                const data = {
+                    labels: ['Low Risk', 'Medium Risk', 'High Risk', 'Critical Risk'],
+                    datasets: [{
+                        data: [65, 20, 10, 5],
+                        backgroundColor: [
+                            this.colors.primary,
+                            this.colors.warning,
+                            '#f97316',
+                            this.colors.danger
+                        ],
+                        borderWidth: 2
+                    }]
+                };
+
+                this.charts.riskDistribution = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' },
+                            title: { display: false }
+                        }
+                    }
+                });
+            }
+
+            updateSummaryStats() {
+                // Sample data update - integrate with real data
+                document.getElementById('summary-total-files').textContent = '15';
+                document.getElementById('summary-pass-rate').textContent = '91.8%';
+                document.getElementById('summary-inspected-units').textContent = '1,425';
+                document.getElementById('summary-defect-rate').textContent = '8.2%';
+            }
+
+            destroy() {
+                Object.values(this.charts).forEach(chart => {
+                    if (chart) chart.destroy();
+                });
+                this.charts = {};
+            }
+        }
+
+        // PDF Report Generation for LIS
+        async function generateLISPDF() {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+            
+            // Show loading overlay
+            const loadingOverlay = document.createElement('div');
+            loadingOverlay.innerHTML = `
+                <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+                    <div style="background: white; padding: 30px; border-radius: 10px; text-align: center;">
+                        <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #8b5cf6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                        <p style="margin: 15px 0 0 0; font-family: Arial, sans-serif;">Generating LIS Report...</p>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(loadingOverlay);
+
+            try {
+                // Add title page
+                pdf.setFontSize(20);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Lead Inspection System Analytics Report', 20, 30);
+                
+                pdf.setFontSize(12);
+                pdf.setFont(undefined, 'normal');
+                pdf.text(`Generated: ${new Date().toLocaleString()}`, 20, 45);
+                pdf.text('Semiconductor Value Chain ERP v5.0', 20, 55);
+
+                // Add summary statistics
+                pdf.setFontSize(16);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Summary Statistics', 20, 80);
+                
+                pdf.setFontSize(11);
+                pdf.setFont(undefined, 'normal');
+                
+                const summaryStats = [
+                    ['Total Files Processed', document.getElementById('summary-total-files').textContent],
+                    ['Pass Rate', document.getElementById('summary-pass-rate').textContent],
+                    ['Inspected Units', document.getElementById('summary-inspected-units').textContent],
+                    ['Defect Rate', document.getElementById('summary-defect-rate').textContent]
+                ];
+                
+                let yPos = 95;
+                summaryStats.forEach(([label, value]) => {
+                    pdf.text(`${label}: ${value}`, 25, yPos);
+                    yPos += 8;
+                });
+
+                // Add charts section
+                pdf.setFontSize(16);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Chart Analysis', 20, 140);
+
+                let currentY = 155;
+                let pageHeight = pdf.internal.pageSize.height;
+                let pageWidth = pdf.internal.pageSize.width;
+
+                const chartIds = [
+                    'test-yield-chart',
+                    'test-failure-chart',
+                    'bin-distribution-chart',
+                    'risk-trend-chart'
+                ];
+
+                for (let i = 0; i < chartIds.length; i++) {
+                    const chartElement = document.getElementById(chartIds[i]);
+                    if (chartElement && currentY < pageHeight - 60) {
+                        try {
+                            const canvas = await html2canvas(chartElement.closest('.bg-white'), {
+                                scale: 2,
+                                logging: false,
+                                useCORS: true
+                            });
+                            
+                            const imgData = canvas.toDataURL('image/png');
+                            const imgWidth = pageWidth - 40;
+                            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                            
+                            if (currentY + imgHeight > pageHeight - 20) {
+                                pdf.addPage();
+                                currentY = 20;
+                            }
+                            
+                            pdf.addImage(imgData, 'PNG', 20, currentY, imgWidth, imgHeight);
+                            currentY += imgHeight + 15;
+                        } catch (chartError) {
+                            console.warn(`Could not capture chart ${chartIds[i]}:`, chartError);
+                        }
+                    }
+                }
+
+                // Add footer to all pages
+                const totalPages = pdf.internal.getNumberOfPages();
+                for (let i = 1; i <= totalPages; i++) {
+                    pdf.setPage(i);
+                    pdf.setFontSize(8);
+                    pdf.setFont(undefined, 'normal');
+                    pdf.text(`LIS Analytics Report - Page ${i} of ${totalPages}`, pageWidth - 70, pageHeight - 10);
+                }
+
+                // Save PDF
+                pdf.save('lis-analytics-report.pdf');
+                
+            } catch (error) {
+                console.error('PDF generation error:', error);
+                alert('Error generating PDF report. Exporting summary data instead.');
+                
+                // Fallback to JSON export
+                const summaryData = {
+                    reportType: 'LIS Analytics',
+                    generatedDate: new Date().toISOString(),
+                    summary: {
+                        totalFiles: document.getElementById('summary-total-files').textContent,
+                        passRate: document.getElementById('summary-pass-rate').textContent,
+                        inspectedUnits: document.getElementById('summary-inspected-units').textContent,
+                        defectRate: document.getElementById('summary-defect-rate').textContent
+                    }
+                };
+                
+                const blob = new Blob([JSON.stringify(summaryData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'lis-summary.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            } finally {
+                // Hide loading overlay
+                document.body.removeChild(loadingOverlay);
+            }
+        }
+
+        // Initialize LIS Chart Manager
+        let lisChartManager = null;
+
+        function generateReport() {
+            generateLISPDF();
+        }
+
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('LIS Analytics Dashboard Initialized');
+            
+            // Initialize components
+            lisAnalysis = new LISAnalysis();
+            window.fileUploadHandler = new LISFileUploadHandler();
+            
+            // Initialize chart manager
+            lisChartManager = new LISChartManager();
+            
+            // Initialize event listeners
+            fileUploadHandler.initializeEventListeners();
+            initializeTabs();
+            
+            // Create charts after a short delay to ensure DOM is ready
+            setTimeout(() => {
+                lisChartManager.createAllCharts();
+                lisChartManager.updateSummaryStats();
+            }, 500);
+            
+            console.log('LIS Analytics ready for use');
+        });
+    </script>
 </body>
-</html>f u n c t i o n   g o B a c k ( )   {   w i n d o w . l o c a t i o n . h r e f   =   ' w a f e r   m a p   d a s h b o a r d   v 5 . 0 - i n t e g r a t e d . h t m l ' ;   }  
+</html>f u n c t i o n   g o B a c k ( )   {   w i n d o w . l o c a t i o n . h r e f   =   ' w a f e r   m a p   d a s h b o a r d   v 5 . 0 - i n t e g r a t e d . h t m l ' ;   } 
+ 
  

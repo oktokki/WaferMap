@@ -158,6 +158,8 @@ cd WaferMap
 python -m http.server 8000
 # 또는
 npx serve .
+
+http://localhost:8080/wafer map dashboard v5.0-integrated.html
 ```
 
 ## 📈 **성과 지표**

@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Correlation Analytics - Semiconductor Value Chain ERP</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔗</text></svg>">
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.1.0/chartjs-plugin-annotation.min.js"></script>
+    
+    <!-- PDF Generation Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- Fonts and Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="css/dashboard.css">
+    <style>
+        /* Ensure CSS works - Critical styles inline */
+        body { 
+            font-family: 'Noto Sans KR', sans-serif; 
+            background-color: #f1f5f9; 
+        }
+        
+        .main-tab.active { 
+            border-color: #dc2626 !important; 
+            color: #dc2626 !important; 
+            background-color: #fef2f2 !important; 
+        }
+        
+        .main-tab { 
+            border-color: transparent; 
+            transition: all 0.2s ease;
+        }
+        
+        .tab-content { 
+            display: none; 
+        }
+        
+        .tab-content:not(.hidden) { 
+            display: block; 
+        }
+        
+        .loader { 
+            border: 4px solid #f3f3f3; 
+            border-top: 4px solid #dc2626; 
+            border-radius: 50%; 
+            width: 40px; 
+            height: 40px; 
+            animation: spin 1s linear infinite; 
+        }
+        
+        @keyframes spin { 
+            0% { transform: rotate(0deg); } 
+            100% { transform: rotate(360deg); } 
+        }
+        
+        /* File upload area hover effects */
+        .upload-area:hover {
+            border-color: #dc2626;
+            background-color: #fef2f2;
+        }
+        
+        /* Progress bar animations */
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        
+        /* Chart container */
+        .chart-container { 
+            position: relative; 
+            width: 100%; 
+            height: 250px; 
+        }
+        
+        /* Correlation specific styles */
+        .correlation-card {
+            border-left: 4px solid #dc2626;
+        }
+        
+        .correlation-summary {
+            background: linear-gradient(135deg, #fef2f2 0%, #fde8e8 100%);
+        }
+        
+        /* Correlation matrix styles */
+        .correlation-cell {
+            text-align: center;
+            padding: 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .correlation-high { background-color: #dcfce7; color: #166534; }
+        .correlation-medium { background-color: #fef3c7; color: #92400e; }
+        .correlation-low { background-color: #fee2e2; color: #991b1b; }
+        .correlation-none { background-color: #f3f4f6; color: #6b7280; }
+        
+        /* Process flow visualization */
+        .process-flow {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .process-step {
+            flex: 1;
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 0 5px;
+            transition: all 0.2s ease;
+        }
+        
+        .process-step:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .process-step.wafer { background-color: #dbeafe; color: #1d4ed8; }
+        .process-step.cp-eds { background-color: #dcfce7; color: #166534; }
+        .process-step.packaging { background-color: #fed7aa; color: #ea580c; }
+        .process-step.final { background-color: #fef3c7; color: #92400e; }
+        .process-step.lis { background-color: #f3e8ff; color: #7c3aed; }
+        
+        .correlation-arrow {
+            font-size: 24px;
+            color: #dc2626;
+            margin: 0 10px;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <!-- Header -->
+    <header class="bg-white px-6 py-3 border-b flex justify-between items-center">
+        <div class="flex items-center space-x-4">
+            <button onclick="goBack()" class="text-gray-600 hover:text-gray-800 transition-colors">
+                <i class="fas fa-arrow-left text-xl"></i>
+            </button>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">🔗 Correlation Analytics</h1>
+                <p class="text-sm text-gray-600">Cross-process correlation analysis and value chain insights</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span class="text-sm text-gray-500">Semiconductor Value Chain ERP v5.0</span>
+            <button onclick="generateReport()" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
+                <i class="fas fa-file-pdf mr-2"></i>Generate Report
+            </button>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav id="main-tabs" class="flex border-b bg-slate-50">
+        <button data-tab="summary" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-red-600 hover:border-red-300 active">Summary</button>
+        <button data-tab="data-integration" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-red-600 hover:border-red-300">Data Integration</button>
+        <button data-tab="correlation-analysis" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-red-600 hover:border-red-300">Correlation Analysis</button>
+        <button data-tab="trend-analysis" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-red-600 hover:border-red-300">Trend Analysis</button>
+        <button data-tab="predictive-models" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-red-600 hover:border-red-300">Predictive Models</button>
+        <button data-tab="value-chain-view" class="main-tab py-4 px-6 border-b-2 font-medium text-sm text-gray-500 hover:text-red-600 hover:border-red-300">Value Chain View</button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="p-6">
+        <!-- Summary Tab -->
+        <div id="summary-tab" class="tab-content">
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">🔗 Correlation Analytics Dashboard</h1>
+                <p class="text-gray-600">Cross-process correlation analysis and semiconductor value chain insights</p>
+            </div>
+
+            <!-- Quick Stats Overview -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow border correlation-card">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-red-100 rounded-lg">
+                            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-500">Data Sources</p>
+                            <p id="summary-data-sources" class="text-2xl font-bold text-gray-900">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow border correlation-card">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-green-100 rounded-lg">
+                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-500">Correlation Score</p>
+                            <p id="summary-correlation-score" class="text-2xl font-bold text-gray-900">--</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow border correlation-card">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-blue-100 rounded-lg">
+                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-500">Process Stages</p>
+                            <p id="summary-process-stages" class="text-2xl font-bold text-gray-900">5</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow border correlation-card">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-yellow-100 rounded-lg">
+                            <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-500">Risk Alerts</p>
+                            <p id="summary-risk-alerts" class="text-2xl font-bold text-gray-900">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Welcome Message -->
+            <div class="correlation-summary p-6 rounded-lg border border-red-200">
+                <h2 class="text-xl font-semibold text-red-800 mb-3">🔗 Correlation Analytics Dashboard</h2>
+                <p class="text-red-700 mb-4">
+                    Advanced cross-process correlation analysis for semiconductor value chain optimization. 
+                    Integrate data from multiple process stages to identify yield correlations and optimization opportunities.
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div class="bg-white p-3 rounded border">
+                        <h3 class="font-semibold text-gray-800 mb-1">🔄 Multi-Process Integration</h3>
+                        <p class="text-gray-600">Wafer Test, CP/EDS, Packaging, Final Test, LIS</p>
+                    </div>
+                    <div class="bg-white p-3 rounded border">
+                        <h3 class="font-semibold text-gray-800 mb-1">📊 Correlation Analysis</h3>
+                        <p class="text-gray-600">Yield correlation, defect pattern analysis</p>
+                    </div>
+                    <div class="bg-white p-3 rounded border">
+                        <h3 class="font-semibold text-gray-800 mb-1">🎯 Predictive Insights</h3>
+                        <p class="text-gray-600">Trend analysis and predictive modeling</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Process Flow Visualization -->
+            <div class="mt-6 bg-white rounded-lg shadow border">
+                <div class="p-6 border-b">
+                    <h3 class="text-lg font-semibold text-gray-800">🔄 Semiconductor Value Chain Process Flow</h3>
+                </div>
+                <div class="p-6">
+                    <div class="process-flow">
+                        <div class="process-step wafer">
+                            <div class="text-2xl mb-2">🧪</div>
+                            <h4 class="font-semibold">Wafer Test</h4>
+                            <p class="text-xs">KGD Mapping</p>
+                        </div>
+                        <div class="correlation-arrow">→</div>
+                        <div class="process-step cp-eds">
+                            <div class="text-2xl mb-2">⚡</div>
+                            <h4 class="font-semibold">CP/EDS</h4>
+                            <p class="text-xs">STDF Analysis</p>
+                        </div>
+                        <div class="correlation-arrow">→</div>
+                        <div class="process-step packaging">
+                            <div class="text-2xl mb-2">📦</div>
+                            <h4 class="font-semibold">Packaging</h4>
+                            <p class="text-xs">Assembly Data</p>
+                        </div>
+                        <div class="correlation-arrow">→</div>
+                        <div class="process-step final">
+                            <div class="text-2xl mb-2">✅</div>
+                            <h4 class="font-semibold">Final Test</h4>
+                            <p class="text-xs">Lot Summary</p>
+                        </div>
+                        <div class="correlation-arrow">→</div>
+                        <div class="process-step lis">
+                            <div class="text-2xl mb-2">🔍</div>
+                            <h4 class="font-semibold">LIS</h4>
+                            <p class="text-xs">Lead Inspection</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current Analysis Status -->
+            <div class="mt-6 bg-white rounded-lg shadow border">
+                <div class="p-6 border-b">
+                    <h3 class="text-lg font-semibold text-gray-800">📋 Current Analysis Status</h3>
+                </div>
+                <div class="p-6">
+                    <div id="current-analysis-status" class="text-center text-gray-500">
+                        <p>Integrate data from multiple process stages to begin correlation analysis</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Integration Tab -->
+        <div id="data-integration-tab" class="tab-content hidden">
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">🔄 Data Integration</h1>
+                <p class="text-gray-600">Integrate data from multiple semiconductor process stages</p>
+            </div>
+
+            <!-- Data Integration Sources -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                <div class="bg-white p-6 rounded-lg shadow border">
+                    <div class="text-center">
+                        <div class="text-4xl mb-4">🧪</div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">Wafer Test Data</h3>
+                        <p class="text-sm text-gray-600 mb-4">KGD mapping and wafer-level test results</p>
+                        <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                            Connect Source
+                        </button>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow border">
+                    <div class="text-center">
+                        <div class="text-4xl mb-4">⚡</div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">CP/EDS STDF</h3>
+                        <p class="text-sm text-gray-600 mb-4">Probe test data and parametric measurements</p>
+                        <button class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                            Connect Source
+                        </button>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow border">
+                    <div class="text-center">
+                        <div class="text-4xl mb-4">📦</div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">Packaging Data</h3>
+                        <p class="text-sm text-gray-600 mb-4">Assembly process and package quality</p>
+                        <button class="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700">
+                            Connect Source
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Integration Status -->
+            <div class="bg-white p-6 rounded-lg shadow border">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">📊 Integration Status</h3>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded">
+                        <span class="font-medium">Data Sources Connected</span>
+                        <span class="text-blue-600 font-bold">3/5</span>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded">
+                        <span class="font-medium">Records Synchronized</span>
+                        <span class="text-green-600 font-bold">1,247</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Correlation Analysis Tab -->
+        <div id="correlation-analysis-tab" class="tab-content hidden">
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">📊 Correlation Analysis</h1>
+                <p class="text-gray-600">Cross-process yield and defect correlation analysis</p>
+            </div>
+
+            <!-- Correlation Matrix -->
+            <div class="bg-white p-6 rounded-lg shadow border mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Process Correlation Matrix</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="text-left p-3">Process</th>
+                                <th class="text-center p-3">Wafer Test</th>
+                                <th class="text-center p-3">CP/EDS</th>
+                                <th class="text-center p-3">Packaging</th>
+                                <th class="text-center p-3">Final Test</th>
+                                <th class="text-center p-3">LIS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b">
+                                <td class="font-semibold p-3">Wafer Test</td>
+                                <td class="text-center p-3 correlation-cell correlation-high">1.00</td>
+                                <td class="text-center p-3 correlation-cell correlation-high">0.87</td>
+                                <td class="text-center p-3 correlation-cell correlation-medium">0.72</td>
+                                <td class="text-center p-3 correlation-cell correlation-medium">0.68</td>
+                                <td class="text-center p-3 correlation-cell correlation-low">0.45</td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="font-semibold p-3">CP/EDS</td>
+                                <td class="text-center p-3 correlation-cell correlation-high">0.87</td>
+                                <td class="text-center p-3 correlation-cell correlation-high">1.00</td>
+                                <td class="text-center p-3 correlation-cell correlation-medium">0.79</td>
+                                <td class="text-center p-3 correlation-cell correlation-high">0.85</td>
+                                <td class="text-center p-3 correlation-cell correlation-medium">0.61</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trend Analysis Tab -->
+        <div id="trend-analysis-tab" class="tab-content hidden">
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">📈 Trend Analysis</h1>
+                <p class="text-gray-600">Historical trends and pattern recognition</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow border">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Yield Trend Analysis</h3>
+                <p class="text-gray-600">Advanced trend analysis features coming soon...</p>
+            </div>
+        </div>
+
+        <!-- Predictive Models Tab -->
+        <div id="predictive-models-tab" class="tab-content hidden">
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">🎯 Predictive Models</h1>
+                <p class="text-gray-600">AI-powered predictive analytics and forecasting</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow border">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Predictive Analytics Engine</h3>
+                <p class="text-gray-600">Machine learning models for yield prediction coming soon...</p>
+            </div>
+        </div>
+
+        <!-- Value Chain View Tab -->
+        <div id="value-chain-view-tab" class="tab-content hidden">
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">🔗 Value Chain View</h1>
+                <p class="text-gray-600">End-to-end value chain visualization and optimization</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow border">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Value Chain Visualization</h3>
+                <p class="text-gray-600">Interactive value chain dashboard coming soon...</p>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div style="display: none;">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-lg shadow border">
+                    <h3 class="text-sm font-medium text-gray-500">Total Lots</h3>
+                    <p id="correlation-total-lots" class="text-2xl font-bold text-blue-600 mt-1">0</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow border">
+                    <h3 class="text-sm font-medium text-gray-500">Process Pairs</h3>
+                    <p id="correlation-process-pairs" class="text-2xl font-bold text-green-600 mt-1">0</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow border">
+                    <h3 class="text-sm font-medium text-gray-500">High Correlation</h3>
+                    <p id="correlation-high-correlation" class="text-2xl font-bold text-purple-600 mt-1">0</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow border">
+                    <h3 class="text-sm font-medium text-gray-500">Risk Alerts</h3>
+                    <p id="correlation-risk-alerts" class="text-2xl font-bold text-red-600 mt-1">0</p>
+                </div>
+            </div>
+
+            <!-- Correlation Matrix -->
+            <div class="bg-white p-6 rounded-lg shadow border mb-8">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Process Correlation Matrix</h3>
+                <div class="overflow-x-auto">
+                    <table id="correlation-matrix" class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="text-left p-2">Process</th>
+                                <th class="text-center p-2">Wafer Test</th>
+                                <th class="text-center p-2">CP/EDS</th>
+                                <th class="text-center p-2">Final Test</th>
+                                <th class="text-center p-2">LIS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b">
+                                <td class="font-semibold p-2">Wafer Test</td>
+                                <td class="text-center p-2 bg-gray-100">1.00</td>
+                                <td class="text-center p-2" id="wafer-cp-correlation">--</td>
+                                <td class="text-center p-2" id="wafer-final-correlation">--</td>
+                                <td class="text-center p-2" id="wafer-lis-correlation">--</td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="font-semibold p-2">CP/EDS</td>
+                                <td class="text-center p-2" id="cp-wafer-correlation">--</td>
+                                <td class="text-center p-2 bg-gray-100">1.00</td>
+                                <td class="text-center p-2" id="cp-final-correlation">--</td>
+                                <td class="text-center p-2" id="cp-lis-correlation">--</td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="font-semibold p-2">Final Test</td>
+                                <td class="text-center p-2" id="final-wafer-correlation">--</td>
+                                <td class="text-center p-2" id="final-cp-correlation">--</td>
+                                <td class="text-center p-2 bg-gray-100">1.00</td>
+                                <td class="text-center p-2" id="final-lis-correlation">--</td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold p-2">LIS</td>
+                                <td class="text-center p-2" id="lis-wafer-correlation">--</td>
+                                <td class="text-center p-2" id="lis-cp-correlation">--</td>
+                                <td class="text-center p-2" id="lis-final-correlation">--</td>
+                                <td class="text-center p-2 bg-gray-100">1.00</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Correlation Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div class="bg-white p-6 rounded-lg shadow border">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Yield Correlation Scatter Plot</h3>
+                                            <canvas id="yield-correlation-chart"></canvas>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow border">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Defect Pattern Correlation</h3>
+                                            <canvas id="defect-correlation-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Risk Analysis -->
+            <div class="bg-white p-6 rounded-lg shadow border">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Risk Analysis & Recommendations</h3>
+                <div id="risk-analysis-content" class="space-y-4">
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-chart-line text-4xl mb-4"></i>
+                        <p>Upload data to see correlation analysis and risk assessment</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- No Data State -->
+        <div id="correlation-no-data" class="text-center text-gray-500 py-12">
+            <i class="fas fa-project-diagram text-6xl mb-4"></i>
+            <p class="text-lg font-medium">Upload multi-process data</p>
+            <p class="text-sm">Select data files from different manufacturing processes to analyze correlations</p>
+        </div>
+
+        <!-- Hidden File Inputs -->
+        <input type="file" id="wafer-correlation-input" multiple class="hidden" accept=".zip">
+        <input type="file" id="stdf-correlation-input" multiple class="hidden" accept=".stdf,.stdf.gz">
+        <input type="file" id="final-correlation-input" multiple class="hidden" accept=".lotSumTXT,.stdf,.stdf.gz">
+    </main>
+
+    <script>
+        // Global variables
+        let allData = [];
+        let correlationResults = {};
+        let correlationAnalysis = null;
+
+        // Correlation Analytics Classes
+        class CorrelationAnalysis {
+            constructor() {
+                this.processData = {
+                    waferTest: [],
+                    cpEds: [],
+                    packaging: [],
+                    finalTest: [],
+                    lis: []
+                };
+                this.correlationMatrix = {};
+                this.charts = {};
+            }
+
+            addProcessData(processType, data) {
+                if (this.processData[processType]) {
+                    this.processData[processType].push(data);
+                    this.updateSummaryStats();
+                    this.calculateCorrelations();
+                    this.updateAnalysisStatus();
+                }
+            }
+
+            updateSummaryStats() {
+                const dataSources = Object.values(this.processData).filter(arr => arr.length > 0).length;
+                const correlationScore = this.calculateOverallCorrelationScore();
+                const riskAlerts = this.calculateRiskAlerts();
+                
+                document.getElementById('summary-data-sources').textContent = dataSources;
+                document.getElementById('summary-correlation-score').textContent = correlationScore || '--';
+                document.getElementById('summary-risk-alerts').textContent = riskAlerts;
+            }
+
+            calculateOverallCorrelationScore() {
+                const correlations = Object.values(this.correlationMatrix);
+                if (correlations.length === 0) return null;
+                
+                const average = correlations.reduce((sum, val) => sum + Math.abs(val), 0) / correlations.length;
+                return (average * 100).toFixed(1) + '%';
+            }
+
+            calculateRiskAlerts() {
+                let alerts = 0;
+                Object.values(this.correlationMatrix).forEach(corr => {
+                    if (Math.abs(corr) < 0.3) alerts++; // Low correlation = risk
+                });
+                return alerts;
+            }
+
+            calculateCorrelations() {
+                // Generate sample correlation data
+                const processes = ['waferTest', 'cpEds', 'packaging', 'finalTest', 'lis'];
+                const activeProcesses = processes.filter(p => this.processData[p].length > 0);
+                
+                this.correlationMatrix = {};
+                
+                for (let i = 0; i < activeProcesses.length; i++) {
+                    for (let j = i + 1; j < activeProcesses.length; j++) {
+                        const proc1 = activeProcesses[i];
+                        const proc2 = activeProcesses[j];
+                        const correlation = this.generateSampleCorrelation(proc1, proc2);
+                        this.correlationMatrix[`${proc1}-${proc2}`] = correlation;
+                    }
+                }
+                
+                this.updateCorrelationMatrix();
+            }
+
+            generateSampleCorrelation(proc1, proc2) {
+                // Generate realistic correlation values based on process types
+                const correlationMap = {
+                    'waferTest-cpEds': 0.85 + Math.random() * 0.1,
+                    'cpEds-finalTest': 0.78 + Math.random() * 0.15,
+                    'finalTest-lis': 0.65 + Math.random() * 0.2,
+                    'waferTest-finalTest': 0.72 + Math.random() * 0.18,
+                    'packaging-finalTest': 0.69 + Math.random() * 0.2,
+                    'cpEds-lis': 0.58 + Math.random() * 0.25
+                };
+                
+                const key = `${proc1}-${proc2}`;
+                return correlationMap[key] || (0.5 + Math.random() * 0.4);
+            }
+
+            updateCorrelationMatrix() {
+                // Update correlation matrix display (simplified for demo)
+                console.log('Correlation Matrix Updated:', this.correlationMatrix);
+            }
+
+            updateAnalysisStatus() {
+                const statusDiv = document.getElementById('current-analysis-status');
+                const dataSources = Object.values(this.processData).filter(arr => arr.length > 0).length;
+                
+                if (dataSources === 0) {
+                    statusDiv.innerHTML = '<p>Integrate data from multiple process stages to begin correlation analysis</p>';
+                } else {
+                    statusDiv.innerHTML = `
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-blue-50 p-4 rounded">
+                                <h4 class="font-semibold text-blue-800">Data Sources Active</h4>
+                                <p class="text-blue-600">${dataSources} process stages integrated</p>
+                            </div>
+                            <div class="bg-green-50 p-4 rounded">
+                                <h4 class="font-semibold text-green-800">Correlation Analysis</h4>
+                                <p class="text-green-600">${Object.keys(this.correlationMatrix).length} correlations calculated</p>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // Tab Management
+        function initializeTabs() {
+            const tabButtons = document.querySelectorAll('.main-tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetTab = this.getAttribute('data-tab');
+                    
+                    // Remove active class from all tabs
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    
+                    // Add active class to clicked tab
+                    this.classList.add('active');
+                    
+                    // Hide all tab contents
+                    tabContents.forEach(content => content.classList.add('hidden'));
+                    
+                    // Show target tab content
+                    const targetContent = document.getElementById(`${targetTab}-tab`);
+                    if (targetContent) {
+                        targetContent.classList.remove('hidden');
+                    }
+                });
+            });
+        }
+
+        // Global functions
+        function goBack() {
+            window.location.href = 'wafer map dashboard v5.0-integrated.html';
+        }
+
+        // Correlation Chart Manager Class
+        class CorrelationChartManager {
+            constructor() {
+                this.charts = {};
+                this.colors = {
+                    primary: '#dc2626',
+                    secondary: '#b91c1c',
+                    accent: '#f87171',
+                    warning: '#f59e0b',
+                    danger: '#ef4444',
+                    info: '#3b82f6',
+                    success: '#10b981'
+                };
+            }
+
+            createAllCharts() {
+                this.createYieldCorrelationChart();
+                this.createDefectCorrelationChart();
+            }
+
+            createYieldCorrelationChart() {
+                const ctx = document.getElementById('yield-correlation-chart');
+                if (!ctx) return;
+
+                const data = {
+                    datasets: [{
+                        label: 'Wafer Test vs Final Test',
+                        data: [
+                            {x: 85, y: 91}, {x: 87, y: 93}, {x: 82, y: 88},
+                            {x: 90, y: 95}, {x: 88, y: 92}, {x: 86, y: 90},
+                            {x: 84, y: 89}, {x: 89, y: 94}, {x: 83, y: 87}
+                        ],
+                        backgroundColor: this.colors.primary,
+                        borderColor: this.colors.secondary,
+                        borderWidth: 2,
+                        pointRadius: 8,
+                        pointHoverRadius: 10
+                    }, {
+                        label: 'CP/EDS vs Final Test',
+                        data: [
+                            {x: 88, y: 91}, {x: 92, y: 95}, {x: 86, y: 89},
+                            {x: 94, y: 97}, {x: 90, y: 93}, {x: 89, y: 92},
+                            {x: 87, y: 90}, {x: 93, y: 96}, {x: 85, y: 88}
+                        ],
+                        backgroundColor: this.colors.success,
+                        borderColor: '#059669',
+                        borderWidth: 2,
+                        pointRadius: 8,
+                        pointHoverRadius: 10
+                    }]
+                };
+
+                this.charts.yieldCorrelation = new Chart(ctx, {
+                    type: 'scatter',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: true, position: 'top' },
+                            title: { display: false }
+                        },
+                        scales: {
+                            x: { 
+                                title: { display: true, text: 'Source Process Yield (%)' },
+                                min: 80,
+                                max: 100
+                            },
+                            y: { 
+                                title: { display: true, text: 'Target Process Yield (%)' },
+                                min: 85,
+                                max: 100
+                            }
+                        }
+                    }
+                });
+            }
+
+            createDefectCorrelationChart() {
+                const ctx = document.getElementById('defect-correlation-chart');
+                if (!ctx) return;
+
+                const data = {
+                    labels: ['Wafer-CP', 'CP-Packaging', 'Packaging-Final', 'Final-LIS', 'Wafer-Final', 'CP-LIS'],
+                    datasets: [{
+                        label: 'Correlation Strength',
+                        data: [0.85, 0.78, 0.69, 0.62, 0.72, 0.58],
+                        backgroundColor: [
+                            this.colors.primary,
+                            this.colors.secondary,
+                            '#f97316',
+                            this.colors.warning,
+                            this.colors.info,
+                            '#8b5cf6'
+                        ],
+                        borderColor: this.colors.secondary,
+                        borderWidth: 2
+                    }]
+                };
+
+                this.charts.defectCorrelation = new Chart(ctx, {
+                    type: 'bar',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            title: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 1.0,
+                                title: { display: true, text: 'Correlation Coefficient' },
+                                ticks: {
+                                    callback: function(value) {
+                                        return value.toFixed(2);
+                                    }
+                                }
+                            },
+                            x: {
+                                title: { display: true, text: 'Process Pairs' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            updateSummaryStats() {
+                // Sample data update - integrate with real data
+                document.getElementById('summary-data-sources').textContent = '5';
+                document.getElementById('summary-correlation-score').textContent = '78.5%';
+                document.getElementById('summary-risk-alerts').textContent = '2';
+                document.getElementById('summary-total-processes').textContent = '15';
+            }
+
+            destroy() {
+                Object.values(this.charts).forEach(chart => {
+                    if (chart) chart.destroy();
+                });
+                this.charts = {};
+            }
+        }
+
+        // PDF Report Generation for Correlation
+        async function generateCorrelationPDF() {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+            
+            // Show loading overlay
+            const loadingOverlay = document.createElement('div');
+            loadingOverlay.innerHTML = `
+                <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+                    <div style="background: white; padding: 30px; border-radius: 10px; text-align: center;">
+                        <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #dc2626; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                        <p style="margin: 15px 0 0 0; font-family: Arial, sans-serif;">Generating Correlation Report...</p>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(loadingOverlay);
+
+            try {
+                // Add title page
+                pdf.setFontSize(20);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Cross-Process Correlation Analytics Report', 20, 30);
+                
+                pdf.setFontSize(12);
+                pdf.setFont(undefined, 'normal');
+                pdf.text(`Generated: ${new Date().toLocaleString()}`, 20, 45);
+                pdf.text('Semiconductor Value Chain ERP v5.0', 20, 55);
+
+                // Add summary statistics
+                pdf.setFontSize(16);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Summary Statistics', 20, 80);
+                
+                pdf.setFontSize(11);
+                pdf.setFont(undefined, 'normal');
+                
+                const summaryStats = [
+                    ['Data Sources Integrated', document.getElementById('summary-data-sources').textContent],
+                    ['Correlation Score', document.getElementById('summary-correlation-score').textContent],
+                    ['Risk Alerts', document.getElementById('summary-risk-alerts').textContent],
+                    ['Total Processes', document.getElementById('summary-total-processes').textContent]
+                ];
+                
+                let yPos = 95;
+                summaryStats.forEach(([label, value]) => {
+                    pdf.text(`${label}: ${value}`, 25, yPos);
+                    yPos += 8;
+                });
+
+                // Add correlation insights
+                pdf.setFontSize(16);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Key Correlation Insights', 20, 140);
+                
+                pdf.setFontSize(11);
+                pdf.setFont(undefined, 'normal');
+                
+                const insights = [
+                    '• Strong correlation (0.85) between Wafer Test and CP/EDS processes',
+                    '• Moderate correlation (0.72) between Wafer Test and Final Test',
+                    '• Packaging-Final Test correlation (0.69) indicates good yield transfer',
+                    '• LIS correlations (0.58-0.62) suggest room for improvement'
+                ];
+                
+                yPos = 155;
+                insights.forEach(insight => {
+                    pdf.text(insight, 25, yPos);
+                    yPos += 8;
+                });
+
+                // Add charts section
+                pdf.addPage();
+                pdf.setFontSize(16);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Correlation Charts', 20, 30);
+
+                let currentY = 45;
+                let pageHeight = pdf.internal.pageSize.height;
+                let pageWidth = pdf.internal.pageSize.width;
+
+                const chartIds = [
+                    'yield-correlation-chart',
+                    'defect-correlation-chart'
+                ];
+
+                for (let i = 0; i < chartIds.length; i++) {
+                    const chartElement = document.getElementById(chartIds[i]);
+                    if (chartElement && currentY < pageHeight - 60) {
+                        try {
+                            const canvas = await html2canvas(chartElement.closest('.bg-white'), {
+                                scale: 2,
+                                logging: false,
+                                useCORS: true
+                            });
+                            
+                            const imgData = canvas.toDataURL('image/png');
+                            const imgWidth = pageWidth - 40;
+                            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                            
+                            if (currentY + imgHeight > pageHeight - 20) {
+                                pdf.addPage();
+                                currentY = 20;
+                            }
+                            
+                            pdf.addImage(imgData, 'PNG', 20, currentY, imgWidth, imgHeight);
+                            currentY += imgHeight + 20;
+                        } catch (chartError) {
+                            console.warn(`Could not capture chart ${chartIds[i]}:`, chartError);
+                        }
+                    }
+                }
+
+                // Add footer to all pages
+                const totalPages = pdf.internal.getNumberOfPages();
+                for (let i = 1; i <= totalPages; i++) {
+                    pdf.setPage(i);
+                    pdf.setFontSize(8);
+                    pdf.setFont(undefined, 'normal');
+                    pdf.text(`Correlation Analytics Report - Page ${i} of ${totalPages}`, pageWidth - 80, pageHeight - 10);
+                }
+
+                // Save PDF
+                pdf.save('correlation-analytics-report.pdf');
+                
+            } catch (error) {
+                console.error('PDF generation error:', error);
+                alert('Error generating PDF report. Exporting summary data instead.');
+                
+                // Fallback to JSON export
+                const summaryData = {
+                    reportType: 'Correlation Analytics',
+                    generatedDate: new Date().toISOString(),
+                    summary: {
+                        dataSources: document.getElementById('summary-data-sources').textContent,
+                        correlationScore: document.getElementById('summary-correlation-score').textContent,
+                        riskAlerts: document.getElementById('summary-risk-alerts').textContent,
+                        totalProcesses: document.getElementById('summary-total-processes').textContent
+                    },
+                    correlationInsights: [
+                        'Strong correlation (0.85) between Wafer Test and CP/EDS processes',
+                        'Moderate correlation (0.72) between Wafer Test and Final Test',
+                        'Packaging-Final Test correlation (0.69) indicates good yield transfer',
+                        'LIS correlations (0.58-0.62) suggest room for improvement'
+                    ]
+                };
+                
+                const blob = new Blob([JSON.stringify(summaryData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'correlation-summary.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            } finally {
+                // Hide loading overlay
+                document.body.removeChild(loadingOverlay);
+            }
+        }
+
+        // Initialize Correlation Chart Manager
+        let correlationChartManager = null;
+
+        function generateReport() {
+            generateCorrelationPDF();
+        }
+
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Correlation Analytics Dashboard Initialized');
+            
+            // Initialize components
+            correlationAnalysis = new CorrelationAnalysis();
+            correlationChartManager = new CorrelationChartManager();
+            
+            // Initialize tabs
+            initializeTabs();
+            
+            // Create charts after a short delay to ensure DOM is ready
+            setTimeout(() => {
+                correlationChartManager.createAllCharts();
+                correlationChartManager.updateSummaryStats();
+            }, 500);
+            
+            // Generate sample data for demonstration
+            setTimeout(() => {
+                // Simulate data integration from different processes
+                correlationAnalysis.addProcessData('waferTest', { yield: 85.2, lots: 15 });
+                correlationAnalysis.addProcessData('cpEds', { yield: 89.1, lots: 12 });
+                correlationAnalysis.addProcessData('finalTest', { yield: 91.5, lots: 18 });
+            }, 2000);
+            
+            console.log('Correlation Analytics ready for use');
+        });
+    </script>
+</body>
+</html> 

@@ -487,13 +487,17 @@ export class STDFParser {
         }
         
         if (recordData.PARM_FLG & 0x40) {
-            recordData.START_IN = dataView.getFloat32(pos, true);
-            pos += 4;
+            const unitsLength = dataView.getUint8(pos);
+            pos += 1;
+            recordData.UNITS = this.readString(dataView, pos, unitsLength);
+            pos += unitsLength;
         }
         
         if (recordData.PARM_FLG & 0x80) {
-            recordData.INCR_IN = dataView.getFloat32(pos, true);
-            pos += 4;
+            const cUnitsLength = dataView.getUint8(pos);
+            pos += 1;
+            recordData.C_RESFMT = this.readString(dataView, pos, cUnitsLength);
+            pos += cUnitsLength;
         }
         
         return recordData;
@@ -616,14 +620,23 @@ export class STDFParser {
         recordData.TEST_T = dataView.getUint32(pos, true);
         pos += 4;
         
-        recordData.PART_ID = dataView.getUint32(pos, true);
-        pos += 4;
+        // Parse part ID
+        const partIdLength = dataView.getUint8(pos);
+        pos += 1;
+        recordData.PART_ID = this.readString(dataView, pos, partIdLength);
+        pos += partIdLength;
         
-        recordData.PART_TXT = dataView.getUint32(pos, true);
-        pos += 4;
+        // Parse part text
+        const partTextLength = dataView.getUint8(pos);
+        pos += 1;
+        recordData.PART_TXT = this.readString(dataView, pos, partTextLength);
+        pos += partTextLength;
         
-        recordData.PART_FIX = dataView.getUint32(pos, true);
-        pos += 4;
+        // Parse part fix
+        const partFixLength = dataView.getUint8(pos);
+        pos += 1;
+        recordData.PART_FIX = this.readString(dataView, pos, partFixLength);
+        pos += partFixLength;
         
         return recordData;
     }
@@ -643,10 +656,10 @@ export class STDFParser {
         recordData.PART_CNT = dataView.getUint32(pos, true);
         pos += 4;
         
-        recordData.RETEST_CNT = dataView.getUint32(pos, true);
+        recordData.RTST_CNT = dataView.getUint32(pos, true);
         pos += 4;
         
-        recordData.ABORT_CNT = dataView.getUint32(pos, true);
+        recordData.ABRT_CNT = dataView.getUint32(pos, true);
         pos += 4;
         
         recordData.GOOD_CNT = dataView.getUint32(pos, true);
@@ -667,26 +680,20 @@ export class STDFParser {
         recordData.FINISH_T = dataView.getUint32(pos, true);
         pos += 4;
         
-        recordData.DISP_COD = dataView.getUint8(pos);
-        pos += 1;
-        
-        recordData.USR_DESC = dataView.getUint8(pos);
-        pos += 1;
-        
-        recordData.EXC_DESC = dataView.getUint8(pos);
+        recordData.LOT_DISP = this.readString(dataView, pos, 1);
         pos += 1;
         
         // Parse user description
         const userDescLength = dataView.getUint8(pos);
         pos += 1;
-        recordData.USR_DESC_TXT = this.readString(dataView, pos, userDescLength);
+        recordData.USR_DESC = this.readString(dataView, pos, userDescLength);
         pos += userDescLength;
         
-        // Parse exception description
-        const excDescLength = dataView.getUint8(pos);
+        // Parse exec description
+        const execDescLength = dataView.getUint8(pos);
         pos += 1;
-        recordData.EXC_DESC_TXT = this.readString(dataView, pos, excDescLength);
-        pos += excDescLength;
+        recordData.EXC_DESC = this.readString(dataView, pos, execDescLength);
+        pos += execDescLength;
         
         return recordData;
     }
@@ -700,13 +707,10 @@ export class STDFParser {
         recordData.MOD_TIM = dataView.getUint32(pos, true);
         pos += 4;
         
-        recordData.CMD_LINE = dataView.getUint8(pos);
-        pos += 1;
-        
         // Parse command line
         const cmdLineLength = dataView.getUint8(pos);
         pos += 1;
-        recordData.CMD_LINE_TXT = this.readString(dataView, pos, cmdLineLength);
+        recordData.CMD_LINE = this.readString(dataView, pos, cmdLineLength);
         pos += cmdLineLength;
         
         return recordData;
@@ -714,16 +718,30 @@ export class STDFParser {
 
     /**
      * Read string from DataView
-     * @param {DataView} dataView - DataView to read from
+     * @param {DataView} dataView - DataView containing string data
      * @param {number} offset - String offset
      * @param {number} length - String length
-     * @returns {string} Read string
+     * @returns {string} Parsed string
      */
     readString(dataView, offset, length) {
         if (length === 0) return '';
         
-        const bytes = new Uint8Array(dataView.buffer, offset, length);
-        return new TextDecoder('utf-8').decode(bytes);
+        try {
+            const bytes = new Uint8Array(dataView.buffer, offset, length);
+            // Handle null-terminated strings
+            let actualLength = length;
+            for (let i = 0; i < length; i++) {
+                if (bytes[i] === 0) {
+                    actualLength = i;
+                    break;
+                }
+            }
+            
+            return new TextDecoder('utf-8').decode(bytes.slice(0, actualLength));
+        } catch (error) {
+            console.warn('Error reading string:', error);
+            return '';
+        }
     }
 
     /**
@@ -780,158 +798,213 @@ export class STDFParser {
 
     /**
      * Process parametric test data
-     * @param {Object} testData - Parametric test record
+     * @param {Object} ptrRecord - PTR record data
      */
-    processParametricTest(testData) {
-        const siteKey = `Site${testData.SITE_NUM}`;
+    processParametricTest(ptrRecord) {
+        const testResult = {
+            testNumber: ptrRecord.TEST_NUM,
+            headNumber: ptrRecord.HEAD_NUM,
+            siteNumber: ptrRecord.SITE_NUM,
+            testName: ptrRecord.TEST_TXT || `Test_${ptrRecord.TEST_NUM}`,
+            result: ptrRecord.RESULT,
+            units: ptrRecord.UNITS || '',
+            lowLimit: ptrRecord.LO_LIMIT,
+            highLimit: ptrRecord.HI_LIMIT,
+            passed: this.isTestPassed(ptrRecord),
+            timestamp: new Date().toISOString()
+        };
         
-        if (!this.parsedData.multiSiteData.has(siteKey)) {
-            this.parsedData.multiSiteData.set(siteKey, {
-                parametricTests: [],
-                functionalTests: [],
-                partResults: []
-            });
-        }
-        
-        const siteData = this.parsedData.multiSiteData.get(siteKey);
-        siteData.parametricTests.push(testData);
+        this.parsedData.testResults.push(testResult);
     }
 
     /**
      * Process functional test data
-     * @param {Object} testData - Functional test record
+     * @param {Object} ftrRecord - FTR record data
      */
-    processFunctionalTest(testData) {
-        const siteKey = `Site${testData.SITE_NUM}`;
+    processFunctionalTest(ftrRecord) {
+        const testResult = {
+            testNumber: ftrRecord.TEST_NUM,
+            headNumber: ftrRecord.HEAD_NUM,
+            siteNumber: ftrRecord.SITE_NUM,
+            testName: ftrRecord.TEST_TXT || `FunctionalTest_${ftrRecord.TEST_NUM}`,
+            cycleCount: ftrRecord.CYCL_CNT,
+            failureCount: ftrRecord.NUM_FAIL,
+            passed: ftrRecord.NUM_FAIL === 0,
+            timestamp: new Date().toISOString()
+        };
         
-        if (!this.parsedData.multiSiteData.has(siteKey)) {
-            this.parsedData.multiSiteData.set(siteKey, {
-                parametricTests: [],
-                functionalTests: [],
-                partResults: []
-            });
-        }
-        
-        const siteData = this.parsedData.multiSiteData.get(siteKey);
-        siteData.functionalTests.push(testData);
+        this.parsedData.testResults.push(testResult);
     }
 
     /**
      * Process part result data
-     * @param {Object} partData - Part result record
+     * @param {Object} prrRecord - PRR record data
      */
-    processPartResult(partData) {
-        const siteKey = `Site${partData.SITE_NUM}`;
+    processPartResult(prrRecord) {
+        const partResult = {
+            headNumber: prrRecord.HEAD_NUM,
+            siteNumber: prrRecord.SITE_NUM,
+            partId: prrRecord.PART_ID,
+            xCoord: prrRecord.X_COORD,
+            yCoord: prrRecord.Y_COORD,
+            hardBin: prrRecord.HARD_BIN,
+            softBin: prrRecord.SOFT_BIN,
+            testCount: prrRecord.NUM_TEST,
+            testTime: prrRecord.TEST_T,
+            passed: !(prrRecord.PART_FLG & 0x08), // Bit 3 indicates pass/fail
+            timestamp: new Date().toISOString()
+        };
         
+        // Add to multi-site data
+        const siteKey = `Site_${prrRecord.SITE_NUM}`;
         if (!this.parsedData.multiSiteData.has(siteKey)) {
-            this.parsedData.multiSiteData.set(siteKey, {
-                parametricTests: [],
-                functionalTests: [],
-                partResults: []
-            });
+            this.parsedData.multiSiteData.set(siteKey, []);
         }
+        this.parsedData.multiSiteData.get(siteKey).push(partResult);
         
-        const siteData = this.parsedData.multiSiteData.get(siteKey);
-        siteData.partResults.push(partData);
-        
-        // Process binning data
-        if (partData.HARD_BIN !== undefined) {
-            this.processBinningData('hard', partData.HARD_BIN);
-        }
-        
-        if (partData.SOFT_BIN !== undefined) {
-            this.processBinningData('soft', partData.SOFT_BIN);
-        }
+        // Add to binning data
+        this.addToBinningData(partResult);
     }
 
     /**
      * Process part count data
-     * @param {Object} countData - Part count record
+     * @param {Object} pcrRecord - PCR record data
      */
-    processPartCount(countData) {
-        if (!this.parsedData.summary.partCounts) {
-            this.parsedData.summary.partCounts = [];
-        }
-        
-        this.parsedData.summary.partCounts.push(countData);
+    processPartCount(pcrRecord) {
+        const siteKey = `Site_${pcrRecord.SITE_NUM}`;
+        this.parsedData.summary[siteKey] = {
+            totalParts: pcrRecord.PART_CNT,
+            retestCount: pcrRecord.RTST_CNT,
+            abortCount: pcrRecord.ABRT_CNT,
+            goodCount: pcrRecord.GOOD_CNT,
+            functionalCount: pcrRecord.FUNC_CNT,
+            yield: pcrRecord.PART_CNT > 0 ? (pcrRecord.GOOD_CNT / pcrRecord.PART_CNT * 100).toFixed(2) : 0
+        };
     }
 
     /**
-     * Process binning data
-     * @param {string} binType - 'hard' or 'soft'
-     * @param {number} binNumber - Bin number
+     * Check if parametric test passed
+     * @param {Object} ptrRecord - PTR record data
+     * @returns {boolean} Test passed status
      */
-    processBinningData(binType, binNumber) {
-        const binArray = binType === 'hard' ? this.parsedData.binningData.hardBins : this.parsedData.binningData.softBins;
+    isTestPassed(ptrRecord) {
+        // Check test flags
+        if (ptrRecord.TEST_FLG & 0x01) return false; // Alarm flag
+        if (ptrRecord.TEST_FLG & 0x02) return false; // Result invalid
+        if (ptrRecord.TEST_FLG & 0x04) return false; // Result unreliable
+        if (ptrRecord.TEST_FLG & 0x08) return false; // Timeout
+        if (ptrRecord.TEST_FLG & 0x10) return false; // No execute
+        if (ptrRecord.TEST_FLG & 0x20) return false; // Abort
+        if (ptrRecord.TEST_FLG & 0x40) return false; // Pass/Fail flag (fail)
         
-        const existingBin = binArray.find(bin => bin.binNumber === binNumber);
-        if (existingBin) {
-            existingBin.count++;
+        // Check limits if available
+        if (ptrRecord.LO_LIMIT !== undefined && ptrRecord.RESULT < ptrRecord.LO_LIMIT) {
+            return false;
+        }
+        if (ptrRecord.HI_LIMIT !== undefined && ptrRecord.RESULT > ptrRecord.HI_LIMIT) {
+            return false;
+        }
+        
+        return true;
+    }
+
+    /**
+     * Add result to binning data
+     * @param {Object} partResult - Part result data
+     */
+    addToBinningData(partResult) {
+        // Add to hard bins
+        const existingHardBin = this.parsedData.binningData.hardBins.find(bin => bin.binNumber === partResult.hardBin);
+        if (existingHardBin) {
+            existingHardBin.count++;
         } else {
-            binArray.push({
-                binNumber: binNumber,
+            this.parsedData.binningData.hardBins.push({
+                binNumber: partResult.hardBin,
                 count: 1,
-                type: binType
+                description: this.getHardBinDescription(partResult.hardBin)
+            });
+        }
+        
+        // Add to soft bins
+        const existingSoftBin = this.parsedData.binningData.softBins.find(bin => bin.binNumber === partResult.softBin);
+        if (existingSoftBin) {
+            existingSoftBin.count++;
+        } else {
+            this.parsedData.binningData.softBins.push({
+                binNumber: partResult.softBin,
+                count: 1,
+                description: this.getSoftBinDescription(partResult.softBin)
             });
         }
     }
 
     /**
-     * Generate summary statistics from parsed data
+     * Get hard bin description
+     * @param {number} binNumber - Hard bin number
+     * @returns {string} Bin description
+     */
+    getHardBinDescription(binNumber) {
+        const hardBinDescriptions = {
+            1: 'Pass',
+            2: 'Functional Fail',
+            3: 'Parametric Fail',
+            4: 'Leakage Fail',
+            5: 'Continuity Fail',
+            6: 'Speed Fail',
+            7: 'Other Fail'
+        };
+        
+        return hardBinDescriptions[binNumber] || `Hard Bin ${binNumber}`;
+    }
+
+    /**
+     * Get soft bin description
+     * @param {number} binNumber - Soft bin number
+     * @returns {string} Bin description
+     */
+    getSoftBinDescription(binNumber) {
+        const softBinDescriptions = {
+            1: 'Pass',
+            2: 'Low Speed',
+            3: 'High Leakage',
+            4: 'Functional Issue',
+            5: 'Parametric Issue',
+            6: 'Contact Issue',
+            7: 'Retest Required'
+        };
+        
+        return softBinDescriptions[binNumber] || `Soft Bin ${binNumber}`;
+    }
+
+    /**
+     * Generate summary statistics
      */
     generateSummary() {
-        const summary = this.parsedData.summary;
+        const totalParts = Array.from(this.parsedData.multiSiteData.values())
+            .flat().length;
         
-        // Calculate total parts tested
-        summary.totalParts = 0;
-        summary.totalPassed = 0;
-        summary.totalFailed = 0;
+        const passedParts = Array.from(this.parsedData.multiSiteData.values())
+            .flat()
+            .filter(part => part.passed).length;
         
-        if (summary.partCounts) {
-            summary.partCounts.forEach(count => {
-                summary.totalParts += count.PART_CNT || 0;
-                summary.totalPassed += count.GOOD_CNT || 0;
-                summary.totalFailed += (count.PART_CNT || 0) - (count.GOOD_CNT || 0);
-            });
-        }
+        const totalRecords = this.parsedData.rawRecords.length;
+        const recordTypeCounts = this.parsedData.recordTypes;
         
-        // Calculate yield
-        summary.yield = summary.totalParts > 0 ? (summary.totalPassed / summary.totalParts) * 100 : 0;
-        
-        // Calculate parametric test statistics
-        if (this.parsedData.parametricData.length > 0) {
-            summary.parametricTests = {
-                totalTests: this.parsedData.parametricData.length,
-                uniqueTests: new Set(this.parsedData.parametricData.map(test => test.TEST_NUM)).size,
-                sites: new Set(this.parsedData.parametricData.map(test => test.SITE_NUM)).size
-            };
-        }
-        
-        // Calculate functional test statistics
-        if (this.parsedData.testResults.length > 0) {
-            summary.functionalTests = {
-                totalTests: this.parsedData.testResults.length,
-                uniqueTests: new Set(this.parsedData.testResults.map(test => test.TEST_NUM)).size,
-                sites: new Set(this.parsedData.testResults.map(test => test.SITE_NUM)).size
-            };
-        }
-        
-        // Calculate binning statistics
-        summary.binning = {
-            hardBins: this.parsedData.binningData.hardBins.length,
-            softBins: this.parsedData.binningData.softBins.length,
-            totalBins: this.parsedData.binningData.hardBins.length + this.parsedData.binningData.softBins.length
+        this.parsedData.summary = {
+            ...this.parsedData.summary,
+            totalParts: totalParts,
+            passedParts: passedParts,
+            failedParts: totalParts - passedParts,
+            yield: totalParts > 0 ? ((passedParts / totalParts) * 100).toFixed(2) : 0,
+            totalRecords: totalRecords,
+            recordTypes: recordTypeCounts,
+            testCount: this.parsedData.testResults.length,
+            parametricTestCount: this.parsedData.parametricData.length,
+            siteCount: this.parsedData.multiSiteData.size,
+            hardBinCount: this.parsedData.binningData.hardBins.length,
+            softBinCount: this.parsedData.binningData.softBins.length,
+            processingTime: new Date().toISOString()
         };
-        
-        // Multi-site statistics
-        summary.multiSite = {
-            totalSites: this.parsedData.multiSiteData.size,
-            sites: Array.from(this.parsedData.multiSiteData.keys())
-        };
-        
-        // Record type statistics
-        summary.totalRecords = this.parsedData.rawRecords ? this.parsedData.rawRecords.length : 0;
-        summary.recordTypes = this.parsedData.recordTypes;
     }
 
     /**
